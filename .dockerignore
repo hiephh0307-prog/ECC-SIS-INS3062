@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+.git/
+.runtime/
+*.zip
+demo_deliverables/*.mp4

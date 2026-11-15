@@ -1,0 +1,48 @@
+========================================================================
+  ECC-SIS — HỆ THỐNG THÔNG TIN BẢO MẬT ỨNG DỤNG ĐƯỜNG CONG ELLIPTIC
+  Học phần: Các nguyên lí an toàn thông tin (INS306202 - Nhóm 2 POIS)
+========================================================================
+
+1. CẤU TRÚC THƯ MỤC BÀI LÀM
+------------------------------------------------------------------------
+  - run.bat                 : Bấm đúp 1 chạm để tự mở Web ECC-SIS trên máy Windows
+  - HUONG-DAN-MO-WEB.txt    : Tệp hướng dẫn này
+  - demo_deliverables/      : Video thuyết trình Demo MP4 (3m45s), phụ đề .srt,
+                              Kịch bản demo & Q&A, file PDF mẫu, 8 ảnh màn hình
+  - docs/                   : Báo cáo chi tiết, Khung phân công, Technical Report
+  - ecc_core/               : Lõi mật mã ECC tự lập trình bằng Python thuần
+  - benchmarks/             : Bộ đo tốc độ Affine vs Jacobian & ECC vs RSA-3072
+  - sis_app/                : Backend FastAPI + SQLite + Web UI WebCrypto P-256
+  - tests/                  : 13 kiểm thử tự động chuẩn NIST CAVP & API
+  - Dockerfile / render.yaml: Cấu hình đưa web lên mạng chạy 24/7 miễn phí
+
+2. CÁCH 1 — MỞ WEB TRÊN MÁY CÁ NHÂN (NHANH NHẤT, 1 CHẠM)
+------------------------------------------------------------------------
+  - Bước 1: Giải nén toàn bộ file .zip ra một thư mục (không chạy trực tiếp
+            bên trong cửa sổ xem trước zip).
+  - Bước 2: Bấm đúp chuột vào file `run.bat`.
+            Script tự kiểm tra Python, tự cài fastapi/uvicorn (nếu thiếu),
+            khởi chạy máy chủ nội bộ tại http://127.0.0.1:8000 và tự mở trình duyệt.
+  (Lưu ý: nếu Windows lần đầu chưa có Python, script sẽ tự gọi winget cài
+   Python 3.12 hoặc báo link cài đặt 1 phút từ python.org).
+
+3. CÁCH 2 — MỞ WEB ONLINE 24/7 CHO CẢ NHÓM & GIẢNG VIÊN (KHÔNG CẦN CÀI GÌ)
+------------------------------------------------------------------------
+  - Mã nguồn GitHub: https://github.com/hiephh0307-prog/ECC-SIS-INS3062
+  - Link Deploy Render 1 chạm (lưu CSDL trong session, HTTPS chuẩn WebCrypto):
+    https://render.com/deploy?repo=https://github.com/hiephh0307-prog/ECC-SIS-INS3062
+  - Hoặc tạo Space Docker miễn phí trên Hugging Face Spaces trỏ về Dockerfile
+    (mặc định chạy cổng 7860, đã mở quyền ghi SQLite).
+  - Hoặc chia sẻ nóng qua Cloudflare Tunnel từ máy đang chạy `run.bat`:
+    cloudflared tunnel --url http://127.0.0.1:8000
+
+4. TÀI KHOẢN & THAO TÁC DEMO NHANH TRÊN WEB
+------------------------------------------------------------------------
+  - Đăng nhập nhanh 1 chạm ở thanh trên cùng:
+      * Alice Trần (@alice) — Người gửi (P-256)
+      * Bob Lê (@bob)       — Người nhận (P-256)
+      * Tài Khoản Khác      — Tự tạo khóa Passkey P-256 mới không cần mật khẩu
+  - Trong hộp thư Bob đã có sẵn gói tài liệu mật mẫu:
+      * Tai_Lieu_Mat_Noi_Bo_ECC_SIS.pdf (có nút tải file giải mã)
+      * Nút "Giả lập Hacker sửa 1 bit" -> test báo động đỏ chặn giải mã tức thì!
+========================================================================

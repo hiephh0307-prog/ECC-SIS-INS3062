@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <title>ECC-SIS | Hệ Thống Thông Tin Bảo Mật (Mã Hóa Đầu Cuối P-256 E2EE)</title>
+  <link rel="stylesheet" href="/static/styles.css?v=4.4" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- NỀN MẬT MÃ CYBER TƯƠNG TÁC ĐỘNG & CỰC QUANG PHÁT SÁNG -->
+  <canvas id="cyberBackground"></canvas>
+  <div class="cyber-aurora cyber-aurora-1"></div>
+  <div class="cyber-aurora cyber-aurora-2"></div>
+  <div class="cyber-aurora cyber-aurora-3"></div>
+
+  <div class="app-shell">
+    <!-- CỘT BÊN TRÁI (SIDEBAR) -->
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-badge">
+          <span class="brand-shield">🛡️</span>
+        </div>
+        <div>
+          <h1>ECC-SIS</h1>
+          <p class="brand-subtitle">Hệ Thống Thông Tin Bảo Mật</p>
+        </div>
+      </div>
+
+      <nav class="nav-menu">
+        <button class="nav-btn active" data-tab="sis">
+          <span class="nav-icon">🔐</span> Nhắn Tin &amp; Gửi File (E2EE)
+        </button>
+        <button class="nav-btn" data-tab="lab">
+          <span class="nav-icon">📐</span> Thí Nghiệm Toán Học ECC
+        </button>
+        <button class="nav-btn" data-tab="bench">
+          <span class="nav-icon">📊</span> Đua Tốc Độ: ECC vs RSA
+        </button>
+        <button class="nav-btn" data-tab="audit">
+          <span class="nav-icon">🧾</span> Sổ Nhật Ký &amp; Kiến Trúc
+        </button>
+      </nav>
+
+      <!-- Hộp định danh người dùng đang đăng nhập -->
+      <div class="identity-card">
+        <div class="card-label">ĐỊNH DANH ĐANG HOẠT ĐỘNG</div>
+        <div id="activeUserBadge" class="user-status offline">
+          <span class="status-indicator"></span> Chưa đăng nhập
+        </div>
+        <div id="activePubKeyPreview" class="mono small muted">Chưa tải khóa</div>
+
+        <div class="quick-personas">
+          <div class="card-label" style="margin-top: 12px;">Chuyển Nhanh Nhân Vật Demo</div>
+          <div class="btn-row">
+            <button id="btnDemoAlice" class="btn btn-secondary btn-sm">👩 Alice (Người gửi)</button>
+            <button id="btnDemoBob" class="btn btn-secondary btn-sm">👨 Bob (Người nhận)</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="sidebar-footer">
+        <div class="footer-spec"><span>Động cơ lõi:</span> <strong class="mono" style="color:var(--cyan);">Pure Python (Tự Code)</strong></div>
+        <div class="footer-spec"><span>Tọa độ xạ ảnh:</span> <strong class="mono">Jacobian (4.65x tốc độ)</strong></div>
+        <div class="footer-spec"><span>Đường cong:</span> <strong class="mono">secp256r1 / k1 / p384</strong></div>
+        <div class="footer-spec"><span>Chuẩn ký số:</span> <strong class="mono">ECDSA (RFC 6979)</strong></div>
+      </div>
+    </aside>
+
+    <!-- NỘI DUNG CHÍNH (MAIN CONTENT) -->
+    <main class="main-content">
+      <div id="secureContextBanner" class="banner warning hidden">
+        ⚠️ Trình duyệt cần mở qua <code>http://localhost:8000</code> hoặc <code>http://127.0.0.1:8000</code> để kích hoạt bộ mã hóa WebCrypto P-256.
+      </div>
+
+      <!-- TAB 1: HỆ THỐNG NHẮN TIN & GỬI TÀI LIỆU E2EE -->
+      <section id="tab-sis" class="tab-panel active">
+        <!-- THANH CHUYỂN ĐỔI NHÂN VẬT TRÊN CÙNG -->
+        <div class="persona-bar card">
+          <div class="persona-current-info">
+            <span class="persona-label">TÀI KHOẢN ĐANG MỞ:</span>
+            <span id="activePersonaText" class="persona-highlight">👩 Alice Trần (@alice)</span>
+            <span class="badge badge-auth">Xác Thực Chữ Ký ECDSA: Đang Bật</span>
+          </div>
+          <div class="persona-pills">
+            <button id="topBtnAlice" class="persona-pill active" title="Đăng nhập tài khoản Alice (Người gửi)">
+              <span class="pill-avatar">👩</span>
+              <div class="pill-text">
+                <strong>Alice Trần</strong>
+                <small>Người gửi (P-256)</small>
+              </div>
+            </button>
+            <button id="topBtnBob" class="persona-pill" title="Đăng nhập tài khoản Bob (Người nhận)">
+              <span class="pill-avatar">👨</span>
+              <div class="pill-text">
+                <strong>Bob Lê</strong>
+                <small>Người nhận (P-256)</small>
+              </div>
+            </button>
+            <button id="topBtnCustom" class="persona-pill" title="Đăng ký hoặc đăng nhập tài khoản khác">
+              <span class="pill-avatar">👤</span>
+              <div class="pill-text">
+                <strong>Tài Khoản Khác</strong>
+                <small>Đăng nhập Passkey</small>
+              </div>
+            </button>
+          </div>
+        </div>
+
+        <!-- SƠ ĐỒ BẢO MẬT 5 GIÂY SIÊU TRỰC QUAN -->
+        <div class="pipeline-hero card">
+          <div class="pipeline-header">
+            <div>
+              <div class="pipeline-tag-group">
+                <span class="badge badge-cyber">⚡ KIẾN TRÚC AN TOÀN ZERO-TRUST</span>
+                <span class="badge badge-info">Máy Chủ Zero-Knowledge</span>
+              </div>
+              <h2 class="pipeline-title">Quy Trình Bảo Mật Dữ Liệu Đầu-Cuối (P-256 E2EE)</h2>
+              <p class="pipeline-desc">Khóa bí mật lưu tại trình duyệt. Máy chủ chỉ lưu bản mã. Chữ ký số chặn đứng mọi can thiệp.</p>
+            </div>
+            <div class="pipeline-actions">
+              <button id="btnRunAutoDemo" class="btn btn-glowing">
+                <span class="icon-pulse">▶</span> Bấm Chạy Mô Phỏng 5 Giây
+              </button>
+            </div>
+          </div>
+
+          <!-- SƠ ĐỒ 3 CHẶNG KẾT NỐI -->
+          <div class="flow-stages" id="flowStagesDiagram">
+            <!-- Chặng 1: Người gửi Alice -->
+            <div class="flow-stage stage-sender" id="stageSender">
+              <div class="stage-header">
+                <span class="stage-step-num">BƯỚC 1</span>
+                <span class="stage-role">TRÌNH DUYỆT ALICE</span>
+              </div>
+              <div class="stage-avatar-box">
+                <span class="stage-avatar-emoji">👩</span>
+                <div class="stage-avatar-name">Alice (Người gửi)</div>
+              </div>
+              <div class="stage-checklist">
+                <div class="check-item"><span class="check-icon">🔑</span> Khóa tạm Ephemeral ECDH (P-256)</div>
+                <div class="check-item"><span class="check-icon">🔒</span> Mã hóa AES-256-GCM</div>
+                <div class="check-item"><span class="check-icon">✍️</span> Ký số xác thực ECDSA (RFC 6979)</div>
+              </div>
+              <div class="stage-footer status-clean">🔒 Mã hóa hoàn tất tại máy khách</div>
+            </div>
+
+            <!-- Đường ống dẫn 1 -->
+            <div class="flow-stream" id="stream1">
+              <div class="stream-line"></div>
+              <div class="stream-packet" id="packetAnim1">
+                <span class="packet-icon">📦</span>
+                <span class="packet-label">Bản mã bảo vệ</span>
+              </div>
+            </div>
+
+            <!-- Chặng 2: Máy chủ Zero-Knowledge -->
+            <div class="flow-stage stage-server" id="stageServer">
+              <div class="stage-header">
+                <span class="stage-step-num">BƯỚC 2</span>
+                <span class="stage-role">MÁY CHỦ TRUNG GIAN</span>
+              </div>
+              <div class="stage-avatar-box">
+                <span class="stage-avatar-emoji">☁️</span>
+                <div class="stage-avatar-name">Máy Chủ FastAPI</div>
+              </div>
+              <div class="stage-checklist">
+                <div class="check-item"><span class="check-icon">🔒</span> Chỉ lưu chuỗi mã Hex trong SQLite</div>
+                <div class="check-item"><span class="check-icon">🚫</span> 0 byte bản rõ (Zero-Knowledge)</div>
+                <div class="check-item"><span class="check-icon">🛡️</span> Không có chìa khóa giải mã</div>
+              </div>
+              <div class="stage-footer status-zk">🛡️ Dù lộ CSDL cũng không đọc được</div>
+            </div>
+
+            <!-- Đường ống dẫn 2 -->
+            <div class="flow-stream" id="stream2">
+              <div class="stream-line"></div>
+              <div class="stream-packet" id="packetAnim2">
+                <span class="packet-icon">📦</span>
+                <span class="packet-label">Chuyển tiếp gói tin</span>
+              </div>
+            </div>
+
+            <!-- Chặng 3: Người nhận Bob -->
+            <div class="flow-stage stage-recipient" id="stageRecipient">
+              <div class="stage-header">
+                <span class="stage-step-num">BƯỚC 3</span>
+                <span class="stage-role">TRÌNH DUYỆT BOB</span>
+              </div>
+              <div class="stage-avatar-box">
+                <span class="stage-avatar-emoji">👨</span>
+                <div class="stage-avatar-name">Bob (Người nhận)</div>
+              </div>
+              <div class="stage-checklist">
+                <div class="check-item"><span class="check-icon">✅</span> Xác minh chữ ký Alice (Chống giả mạo)</div>
+                <div class="check-item"><span class="check-icon">🔑</span> Tính khóa chung bí mật (ECDH)</div>
+                <div class="check-item"><span class="check-icon">💬</span> Giải mã và hiển thị dữ liệu gốc</div>
+              </div>
+              <div class="stage-footer status-bob">🎉 Chỉ Bob mới mở được</div>
+            </div>
+          </div>
+
+          <!-- BẢNG ĐỐI CHIẾU THỰC TẾ KHI CHẠY MÔ PHỎNG -->
+          <div id="simResultBox" class="sim-result-box hidden">
+            <div class="sim-result-header">
+              <strong>🔍 BẰNG CHỨNG ĐỐI CHIẾU: MÁY CHỦ THẤY GÌ VS BOB THẤY GÌ</strong>
+              <button id="btnCloseSimProof" class="btn btn-outline btn-sm">✕ Đóng</button>
+            </div>
+            <div class="sim-grid">
+              <div class="sim-col sim-server-col">
+                <div class="sim-col-title text-danger">
+                  <span class="sim-col-icon">☁️</span> Máy chủ chỉ thấy bản mã vô nghĩa:
+                </div>
+                <div class="sim-code-preview" id="simServerView"></div>
+                <small class="muted">Máy chủ hoàn toàn mù trước nội dung (Zero-Knowledge).</small>
+              </div>
+              <div class="sim-arrow-divider">➔</div>
+              <div class="sim-col sim-bob-col">
+                <div class="sim-col-title text-success">
+                  <span class="sim-col-icon">👨</span> Bob giải mã chữ rõ bằng khóa riêng:
+                </div>
+                <div class="sim-plaintext-preview" id="simBobView"></div>
+                <small class="muted">Chữ ký ECDSA: HỢP LỆ ✅ | Thẻ toàn vẹn AES-GCM: HỢP LỆ ✅</small>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- KHU VỰC THAO TÁC 2 CỘT -->
+        <div class="grid-2" style="margin-top: 18px;">
+          <!-- Khối soạn và gửi tin nhắn / tệp tin -->
+          <div class="card compose-card">
+            <div class="card-header-row">
+              <h3>🔒 Soạn Tin Nhắn Hoặc Gửi Tài Liệu Mật</h3>
+              <span class="badge badge-cyber">Ephemeral ECDH + AES-GCM + ECDSA</span>
+            </div>
+            <div class="form-grid">
+              <label>
+                Người nhận
+                <select id="msgRecipient"></select>
+              </label>
+              <label>
+                Đính kèm tệp tin (Tùy chọn, tối đa 5 MB)
+                <input id="msgFileInput" type="file" />
+              </label>
+            </div>
+            <div style="display: flex; gap: 8px; margin-top: 10px; margin-bottom: 6px; align-items: center; flex-wrap: wrap;">
+              <span class="small muted">Nạp tin mẫu:</span>
+              <button type="button" class="btn btn-secondary btn-sm" id="btnPreset1">💰 Lệnh chuyển 500tr</button>
+              <button type="button" class="btn btn-secondary btn-sm" id="btnPreset2">📄 Hợp đồng bảo mật</button>
+            </div>
+            <label style="margin-top: 6px; display: block;">
+              Nội dung tin nhắn mật / Ghi chú tài liệu
+              <textarea id="msgPlaintext" rows="3" placeholder="Nhập nội dung bí mật hoặc ghi chú cho tài liệu tại đây..."></textarea>
+            </label>
+            <div class="btn-row" style="margin-top: 12px;">
+              <button id="btnSendEncrypted" class="btn btn-primary btn-large">
+                <span>🔐</span> Mã Hóa &amp; Ký Số (Gửi Ngay)
+              </button>
+            </div>
+            <div id="sendStatus" class="status-box hidden"></div>
+          </div>
+
+          <!-- Khối tạo khóa tự do & Đăng nhập Passkey -->
+          <div class="card" id="customAuthCard">
+            <div class="card-header-row">
+              <h3>👤 Đăng Ký Tài Khoản Mới (Passkey)</h3>
+              <span class="badge badge-info">Không Dùng Mật Khẩu</span>
+            </div>
+            <p class="muted small">Trình duyệt tự tạo cặp khóa P-256 cất trong máy bạn. Mật khẩu không bao giờ được gửi qua mạng.</p>
+            <div class="form-grid">
+              <label>
+                Tên tài khoản (Username)
+                <input id="authUsername" type="text" placeholder="ví dụ: cuong_security" />
+              </label>
+              <label>
+                Tên hiển thị
+                <input id="authDisplayName" type="text" placeholder="ví dụ: Nguyễn Văn Cường" />
+              </label>
+            </div>
+            <div class="btn-row" style="margin-top: 12px;">
+              <button id="btnRegisterLogin" class="btn btn-primary">Tạo Khóa P-256 &amp; Đăng Ký</button>
+              <button id="btnChallengeLogin" class="btn btn-secondary">Đăng Nhập Khóa Có Sẵn</button>
+            </div>
+            <div id="authLog" class="status-box hidden"></div>
+          </div>
+        </div>
+
+        <!-- Cửa sổ Soi CSDL Máy Chủ (Zero-Knowledge Audit) -->
+        <div id="serverInspectorCard" class="card hidden" style="margin-top: 18px;">
+          <div class="card-header-row">
+            <div>
+              <h3>☁️ Soi Bản Mã Thô Trong Cơ Sở Dữ Liệu Máy Chủ (Zero-Knowledge)</h3>
+              <p class="muted small">Đây là nguyên văn dữ liệu JSON lưu trong bảng <code>messages</code> của SQLite. Toàn bộ là mã hex, hoàn toàn không có chữ rõ!</p>
+            </div>
+            <span class="badge badge-warning">Máy Chủ Hoàn Toàn Không Thể Đọc Trộm</span>
+          </div>
+          <pre id="serverInspectorPre" class="code-box"></pre>
+        </div>
+
+        <!-- DANH SÁCH TIN NHẮN & TÀI LIỆU TRONG HỘP THƯ -->
+        <div class="card" style="margin-top: 18px;">
+          <div class="card-header-row">
+            <div>
+              <h3>📥 Hộp Thư Mã Hóa &amp; Tin Nhắn Đã Gửi</h3>
+              <p class="muted small">Tin nhắn được giải mã và kiểm tra chữ ký số trực tiếp trên máy của bạn bằng khóa bí mật riêng.</p>
+            </div>
+            <div class="btn-row">
+              <button id="btnRefreshSis" class="btn btn-secondary">↻ Tải Lại Hộp Thư</button>
+              <button id="btnToggleInspector" class="btn btn-outline">👁️ Soi CSDL Máy Chủ</button>
+            </div>
+          </div>
+          <div id="messagesList" class="messages-list">
+            <p class="muted">Đang tải dữ liệu hộp thư...</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 2: PHÒNG THÍ NGHIỆM THUẬT TOÁN ECC -->
+      <section id="tab-lab" class="tab-panel">
+        <header class="page-header">
+          <div>
+            <h2>Phòng Thí Nghiệm &amp; Nghiên Cứu Thuật Toán ECC</h2>
+            <p>Chạy trực tiếp bằng lõi Python <code>ecc_core</code> tự lập trình của nhóm (Toán Affine, Tối ưu Jacobian, ECDH, ECDSA RFC 6979, ECIES)</p>
+          </div>
+        </header>
+
+        <div class="grid-2">
+          <!-- Đồ thị trực quan đường cong nhỏ toy_p97 -->
+          <div class="card">
+            <h3>Đồ Thị Đường Cong Elliptic Hữu Hạn (<code>toy_p97</code>)</h3>
+            <p class="muted small">Phương trình: <code>y² ≡ x³ + 3x + 2 (mod 97)</code>, bậc nguyên tố <code>n = 103</code>, điểm sinh <code>G = (2, 4)</code></p>
+            <div class="svg-wrap">
+              <svg id="curveSvg" viewBox="0 0 420 420" width="100%" height="360"></svg>
+            </div>
+            <div class="legend-row small">
+              <span><i class="dot dot-all"></i> Các điểm trên đường cong</span>
+              <span><i class="dot dot-p"></i> Điểm P</span>
+              <span><i class="dot dot-q"></i> Điểm Q</span>
+              <span><i class="dot" style="background:#a855f7;"></i> Điểm giao -(P+Q)</span>
+              <span><i class="dot dot-sum"></i> Tổng P+Q</span>
+              <span><i class="dot dot-kp"></i> Tích k·P</span>
+              <span style="color:#f59e0b; font-weight:bold;">— Đường nối P&amp;Q</span>
+              <span style="color:#00f2fe; font-weight:bold;">--- Trục đối xứng</span>
+            </div>
+          </div>
+
+          <!-- Phép cộng điểm và bảng trace từng bit -->
+          <div class="card">
+            <h3>Phép Cộng Điểm &amp; Từng Bước Nhân Vô Hướng (Double-and-Add)</h3>
+            <div class="form-grid-3">
+              <label>Điểm P (x, y)
+                <select id="labPointP"></select>
+              </label>
+              <label>Điểm Q (x, y)
+                <select id="labPointQ"></select>
+              </label>
+              <label>Hệ số k
+                <input id="labScalarK" type="number" min="1" max="102" value="7" />
+              </label>
+            </div>
+            <div class="btn-row" style="margin-top: 10px;">
+              <button id="btnComputePointOps" class="btn btn-primary">Tính P+Q, 2P, k·P</button>
+            </div>
+            <div id="pointOpsSummary" class="status-box" style="margin-top: 10px;"></div>
+            <div id="pointOpsTrace" class="trace-table-wrap"></div>
+          </div>
+        </div>
+
+        <div class="grid-3" style="margin-top: 16px;">
+          <!-- Thí nghiệm ECDH -->
+          <div class="card">
+            <h3>Bắt Tay Trao Đổi Khóa ECDH + HKDF</h3>
+            <label>Đường cong
+              <select id="labEcdhCurve">
+                <option value="secp256r1">secp256r1 (Chuẩn NIST P-256)</option>
+                <option value="secp256k1">secp256k1 (Bitcoin/Ethereum)</option>
+                <option value="secp384r1">secp384r1 (NIST P-384)</option>
+                <option value="toy_p97">toy_p97 (Đường cong học thuật)</option>
+              </select>
+            </label>
+            <button id="btnRunEcdhLab" class="btn btn-primary" style="margin-top: 10px; width: 100%;">Chạy Bắt Tay ECDH</button>
+            <pre id="labEcdhOut" class="code-box small" style="margin-top: 10px;">Bấm nút để chạy thử...</pre>
+          </div>
+
+          <!-- Thí nghiệm ECDSA và Tấn công Nonce Reuse -->
+          <div class="card">
+            <h3>Ký ECDSA &amp; Tấn Công Trùng Nonce</h3>
+            <label>Nội dung cần ký
+              <input id="labEcdsaMsg" type="text" value="Phê duyệt lệnh chuyển tiền #9021" />
+            </label>
+            <label class="checkbox-row" style="margin-top: 8px;">
+              <input id="labNonceReuse" type="checkbox" checked />
+              <span>Biểu diễn khôi phục Khóa Bí Mật khi bị trùng Nonce k</span>
+            </label>
+            <button id="btnRunEcdsaLab" class="btn btn-primary" style="margin-top: 10px; width: 100%;">Ký Số, Soi Dấu &amp; Tấn Công Demo</button>
+            <pre id="labEcdsaOut" class="code-box small" style="margin-top: 10px;">Bấm nút để chạy thử...</pre>
+          </div>
+
+          <!-- Thí nghiệm ECIES -->
+          <div class="card">
+            <h3>Mã Hóa &amp; Cạy Hộp ECIES</h3>
+            <label>Văn bản mật
+              <input id="labEciesMsg" type="text" value="Tài liệu bí mật quốc gia 2026" />
+            </label>
+            <label class="checkbox-row" style="margin-top: 8px;">
+              <input id="labEciesTamper" type="checkbox" />
+              <span>Cố tình sửa 1 byte bản mã (Mô phỏng Hacker cạy hộp)</span>
+            </label>
+            <button id="btnRunEciesLab" class="btn btn-primary" style="margin-top: 10px; width: 100%;">Chạy Thử Quy Trình ECIES</button>
+            <pre id="labEciesOut" class="code-box small" style="margin-top: 10px;">Bấm nút để chạy thử...</pre>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 3: ĐUA TỐC ĐỘ ECC VS RSA -->
+      <section id="tab-bench" class="tab-panel">
+        <header class="page-header">
+          <div>
+            <h2>Đua Tốc Độ: So Sánh Hiệu Năng ECC vs RSA</h2>
+            <p>Đo đạc trực tiếp trên cùng nền tảng Python thuần ở các mức an toàn tương đương theo chuẩn NIST SP 800-57 + Tối ưu hóa Jacobian</p>
+          </div>
+          <div class="btn-row">
+            <button id="btnRunQuickBench" class="btn btn-primary">▶ Chạy Đua Tốc Độ Nhanh (~1 giây)</button>
+            <button id="btnRunFullBench" class="btn btn-secondary">▶ Chạy Đầy Đủ (+RSA-3072, ~4 giây)</button>
+          </div>
+        </header>
+
+        <div class="grid-2">
+          <div class="card">
+            <h3>Tối Ưu Tọa Độ: Jacobian vs Affine (Đường cong <code>secp256r1</code>)</h3>
+            <div id="coordBenchBox" class="status-box">Bấm nút chạy đua tốc độ ở trên để đo mức tăng tốc giữa Affine và Jacobian.</div>
+          </div>
+          <div class="card">
+            <h3>So Sánh Kích Thước Khóa &amp; Chữ Ký Số (Byte)</h3>
+            <canvas id="sizeChartCanvas" width="520" height="220"></canvas>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top: 16px;">
+          <h3>Bảng Kết Quả Đo Thời Gian Thực Tế (Mili-giây — ms)</h3>
+          <div id="benchResultsTableWrap" class="table-wrap">
+            <p class="muted">Bấm "Chạy Đua Tốc Độ Nhanh" ở trên để đo trực tiếp trên máy tính của bạn.</p>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top: 16px;">
+          <h3>Bảng Quy Đổi Mức An Toàn NIST SP 800-57 &amp; Mức Tiết Kiệm Băng Thông</h3>
+          <div id="nistTableWrap" class="table-wrap"></div>
+        </div>
+      </section>
+
+      <!-- TAB 4: SỔ NHẬT KÝ KIỂM TOÁN & KIẾN TRÚC -->
+      <section id="tab-audit" class="tab-panel">
+        <header class="page-header">
+          <div>
+            <h2>Sổ Nhật Ký Kiểm Toán Chuỗi Băm SHA-256 &amp; Mô Hình Kiến Trúc</h2>
+            <p>Mỗi sự kiện bảo mật được băm nối tiếp nhau bằng SHA-256 như một cuốn sổ cái chuỗi khối mini: <code>H_i = SHA256(H_{i-1} || timestamp || actor || action || details)</code></p>
+          </div>
+          <div class="btn-row">
+            <button id="btnVerifyAudit" class="btn btn-primary">✓ Kiểm Tra Tính Toàn Vẹn Chuỗi Băm</button>
+          </div>
+        </header>
+
+        <div id="auditIntegrityBanner" class="status-box hidden"></div>
+
+        <div class="card">
+          <h3>Tổng Quan 4 Tầng Bảo Mật Của Hệ Thống</h3>
+          <div class="arch-grid">
+            <div class="arch-box">
+              <h4>1. Đăng Nhập Không Mật Khẩu</h4>
+              <p>Mỗi người dùng sở hữu cặp khóa P-256 riêng. Đăng nhập bằng cách ký số lên câu đố ngẫu nhiên của Server (không gửi mật khẩu, chống phát lại).</p>
+            </div>
+            <div class="arch-box">
+              <h4>2. Khóa Tạm Thời (Forward Secrecy)</h4>
+              <p>Mỗi tin nhắn/tệp tin đều sinh chìa khóa phiên tạm <code>(k, kG)</code> riêng, rèn khóa qua HKDF-SHA256 và khóa két AES-256-GCM.</p>
+            </div>
+            <div class="arch-box">
+              <h4>3. Chữ Ký Chống Chối Bỏ</h4>
+              <p>Người gửi đóng dấu chữ ký ECDSA lên toàn bộ gói tin. Máy chủ kiểm tra đúng con dấu mới lưu; người nhận kiểm tra trước khi mở.</p>
+            </div>
+            <div class="arch-box">
+              <h4>4. Máy Chủ Mù (Zero-Knowledge)</h4>
+              <p>CSDL SQLite chỉ lưu bản mã, khóa công khai và chữ ký. Kể cả quản trị viên hay hacker cướp database cũng không đọc được nội dung.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top: 16px;">
+          <h3>Sổ Nhật Ký Ghi Nhận Sự Kiện Hệ Thống</h3>
+          <div id="auditTableWrap" class="table-wrap"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="/static/app.js?v=4.4"></script>
+</body>
+</html>
