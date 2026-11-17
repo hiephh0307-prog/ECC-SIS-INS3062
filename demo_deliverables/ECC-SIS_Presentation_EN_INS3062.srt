@@ -1,0 +1,71 @@
+1
+00:00:00,200 --> 00:00:05,054
+ECC-SIS: Elliptic Curve Cryptography Secure Information System
+
+2
+00:00:05,094 --> 00:00:10,501
+Principles of Information Security (INS306202) — Group 2 POIS, VNU-IS
+
+3
+00:00:11,183 --> 00:00:18,623
+ECC Cryptography Lab: Pure-Python finite-field F_p engine built completely from scratch.
+
+4
+00:00:18,663 --> 00:00:26,102
+Curve toy_p97 (n = 103) visualizes geometric Point Addition & bit-by-bit Double-and-Add.
+
+5
+00:00:26,142 --> 00:00:34,432
+Forward scalar multiplication is fast, while reversing k on a 256-bit curve (ECDLP) is infeasible.
+
+6
+00:00:36,076 --> 00:00:47,744
+ECDH + HKDF Handshake: both parties derive a shared AES-256 session key without sending secrets.
+
+7
+00:00:47,784 --> 00:00:59,331
+Sony PS3 Flaw Demo (2010): reusing Nonce k across two ECDSA signatures exposes the Private Key.
+
+8
+00:00:59,371 --> 00:01:07,624
+Permanently mitigated via deterministic nonce generation (RFC 6979).
+
+9
+00:01:09,217 --> 00:01:18,047
+Live Benchmark: Projective Jacobian coordinates batch mod_inv -> over 5x faster than Affine.
+
+10
+00:01:18,087 --> 00:01:27,592
+128-bit NIST SP 800-57 Level: P-256 public key is 33 Bytes — 12x smaller than RSA-3072 (384 Bytes).
+
+11
+00:01:27,632 --> 00:01:35,691
+Ultra-fast key generation powers fresh ephemeral keys per message (Forward Secrecy).
+
+12
+00:01:37,917 --> 00:01:50,111
+Bilingual EN/VI Portal & Passkey ECDSA Auth: local P-256 keypair signs a one-time challenge.
+
+13
+00:01:50,151 --> 00:02:01,946
+5-Second Live Simulation: Client seals payload with Ephemeral ECDH + AES-256-GCM + ECDSA.
+
+14
+00:02:02,451 --> 00:02:13,395
+Zero-Knowledge DB Inspector: 100% hex ciphertexts (0 bytes plaintext); only Bob unlocks the PDF.
+
+15
+00:02:13,435 --> 00:02:24,608
+1-Bit MITM Tamper Simulation -> Instant Red Alert blocks decryption (ECDSA & AES-GCM Tag failure)!
+
+16
+00:02:26,267 --> 00:02:35,655
+Tamper-Evident Audit Ledger: H_i = SHA256(H_{i-1} || ...) detects any database history alteration.
+
+17
+00:02:35,695 --> 00:02:44,698
+Summary: 13/13 automated NIST CAVP & Zero-Trust API tests passed — full CIA & Non-Repudiation.
+
+18
+00:02:46,200 --> 00:02:51,814
+ECC-SIS — Group 2 POIS | Principles of Information Security (INS306202 - VNU-IS).

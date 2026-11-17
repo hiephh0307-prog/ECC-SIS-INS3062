@@ -1,504 +1,503 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <title>ECC-SIS | Hệ Thống Thông Tin Bảo Mật (Mã Hóa Đầu Cuối P-256 E2EE)</title>
-  <link rel="stylesheet" href="/static/styles.css?v=4.4" />
+  <title>ECC-SIS | Secure Information System (P-256 End-to-End Encryption)</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ctext y='50' font-size='48'%3E%F0%9F%9B%A1%EF%B8%8F%3C/text%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="./static/styles.css?v=5.0" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
-  <!-- NỀN MẬT MÃ CYBER TƯƠNG TÁC ĐỘNG & CỰC QUANG PHÁT SÁNG -->
-  <canvas id="cyberBackground"></canvas>
-  <div class="cyber-aurora cyber-aurora-1"></div>
-  <div class="cyber-aurora cyber-aurora-2"></div>
-  <div class="cyber-aurora cyber-aurora-3"></div>
+  <canvas id="cyberBackground" aria-hidden="true"></canvas>
+  <div class="cyber-aurora cyber-aurora-1" aria-hidden="true"></div>
+  <div class="cyber-aurora cyber-aurora-2" aria-hidden="true"></div>
+  <div class="cyber-aurora cyber-aurora-3" aria-hidden="true"></div>
 
   <div class="app-shell">
-    <!-- CỘT BÊN TRÁI (SIDEBAR) -->
+    <!-- LEFT SIDEBAR -->
     <aside class="sidebar">
       <div class="brand">
-        <div class="brand-badge">
+        <div class="brand-badge" aria-hidden="true">
           <span class="brand-shield">🛡️</span>
         </div>
         <div>
           <h1>ECC-SIS</h1>
-          <p class="brand-subtitle">Hệ Thống Thông Tin Bảo Mật</p>
+          <p class="brand-subtitle" data-i18n="brand_subtitle">Secure Information System</p>
         </div>
       </div>
 
-      <nav class="nav-menu">
-        <button class="nav-btn active" data-tab="sis">
-          <span class="nav-icon">🔐</span> Nhắn Tin &amp; Gửi File (E2EE)
+      <!-- BILINGUAL LANGUAGE SWITCHER (EN DEFAULT | VI) -->
+      <div class="lang-bar" role="group" aria-label="Language Switcher">
+        <span class="lang-bar-label">🌐 Language</span>
+        <div class="lang-segmented">
+          <button type="button" id="langBtnEn" class="lang-btn active" data-lang="en" aria-pressed="true">🇬🇧 EN</button>
+          <button type="button" id="langBtnVi" class="lang-btn" data-lang="vi" aria-pressed="false">🇻🇳 VI</button>
+        </div>
+      </div>
+
+      <nav class="nav-menu" aria-label="Primary">
+        <button type="button" class="nav-btn active" data-tab="sis">
+          <span class="nav-icon" aria-hidden="true">🔐</span>
+          <span data-i18n="nav_sis">E2EE Messaging &amp; Files</span>
         </button>
-        <button class="nav-btn" data-tab="lab">
-          <span class="nav-icon">📐</span> Thí Nghiệm Toán Học ECC
+        <button type="button" class="nav-btn" data-tab="lab">
+          <span class="nav-icon" aria-hidden="true">📐</span>
+          <span data-i18n="nav_lab">ECC Cryptography Lab</span>
         </button>
-        <button class="nav-btn" data-tab="bench">
-          <span class="nav-icon">📊</span> Đua Tốc Độ: ECC vs RSA
+        <button type="button" class="nav-btn" data-tab="bench">
+          <span class="nav-icon" aria-hidden="true">📊</span>
+          <span data-i18n="nav_bench">Speed Race: ECC vs RSA</span>
         </button>
-        <button class="nav-btn" data-tab="audit">
-          <span class="nav-icon">🧾</span> Sổ Nhật Ký &amp; Kiến Trúc
+        <button type="button" class="nav-btn" data-tab="audit">
+          <span class="nav-icon" aria-hidden="true">🧾</span>
+          <span data-i18n="nav_audit">Audit Log &amp; Architecture</span>
         </button>
       </nav>
 
-      <!-- Hộp định danh người dùng đang đăng nhập -->
+      <!-- Active Identity Card -->
       <div class="identity-card">
-        <div class="card-label">ĐỊNH DANH ĐANG HOẠT ĐỘNG</div>
+        <div class="card-label" data-i18n="active_identity_label">ACTIVE IDENTITY</div>
         <div id="activeUserBadge" class="user-status offline">
-          <span class="status-indicator"></span> Chưa đăng nhập
+          <span class="status-indicator"></span> <span data-i18n="not_logged_in">Not signed in</span>
         </div>
-        <div id="activePubKeyPreview" class="mono small muted">Chưa tải khóa</div>
+        <div id="activePubKeyPreview" class="mono small muted" data-i18n="key_not_loaded">No key loaded</div>
 
         <div class="quick-personas">
-          <div class="card-label" style="margin-top: 12px;">Chuyển Nhanh Nhân Vật Demo</div>
+          <div class="card-label" style="margin-top: 12px;" data-i18n="quick_switch_label">Quick Demo Persona Switch</div>
           <div class="btn-row">
-            <button id="btnDemoAlice" class="btn btn-secondary btn-sm">👩 Alice (Người gửi)</button>
-            <button id="btnDemoBob" class="btn btn-secondary btn-sm">👨 Bob (Người nhận)</button>
+            <button type="button" id="btnDemoAlice" class="btn btn-secondary btn-sm" data-i18n="btn_demo_alice">👩 Alice (Sender)</button>
+            <button type="button" id="btnDemoBob" class="btn btn-secondary btn-sm" data-i18n="btn_demo_bob">👨 Bob (Recipient)</button>
           </div>
         </div>
       </div>
 
+      <div id="runtimeModeBadge" class="runtime-mode-pill mono">Mode: Python FastAPI + SQLite</div>
+
       <div class="sidebar-footer">
-        <div class="footer-spec"><span>Động cơ lõi:</span> <strong class="mono" style="color:var(--cyan);">Pure Python (Tự Code)</strong></div>
-        <div class="footer-spec"><span>Tọa độ xạ ảnh:</span> <strong class="mono">Jacobian (4.65x tốc độ)</strong></div>
-        <div class="footer-spec"><span>Đường cong:</span> <strong class="mono">secp256r1 / k1 / p384</strong></div>
-        <div class="footer-spec"><span>Chuẩn ký số:</span> <strong class="mono">ECDSA (RFC 6979)</strong></div>
+        <div class="footer-spec"><span data-i18n="spec_engine_lbl">Core Engine:</span> <strong class="mono" style="color:var(--cyan);" data-i18n="spec_engine_val">Pure Python (From Scratch)</strong></div>
+        <div class="footer-spec"><span data-i18n="spec_coord_lbl">Projective Coords:</span> <strong class="mono" data-i18n="spec_coord_val">Jacobian (~5.4x Speedup)</strong></div>
+        <div class="footer-spec"><span data-i18n="spec_curves_lbl">Curves:</span> <strong class="mono">secp256r1 / k1 / p384</strong></div>
+        <div class="footer-spec"><span data-i18n="spec_sig_lbl">Signature Std:</span> <strong class="mono">ECDSA (RFC 6979)</strong></div>
       </div>
     </aside>
 
-    <!-- NỘI DUNG CHÍNH (MAIN CONTENT) -->
+    <!-- MAIN CONTENT -->
     <main class="main-content">
-      <div id="secureContextBanner" class="banner warning hidden">
-        ⚠️ Trình duyệt cần mở qua <code>http://localhost:8000</code> hoặc <code>http://127.0.0.1:8000</code> để kích hoạt bộ mã hóa WebCrypto P-256.
+      <div id="secureContextBanner" class="banner warning hidden" role="alert" data-i18n-html="secure_ctx_warn">
+        ⚠️ Open via <code>https://</code>, <code>http://localhost:8000</code>, or <code>http://127.0.0.1:8000</code> to enable WebCrypto P-256.
       </div>
 
-      <!-- TAB 1: HỆ THỐNG NHẮN TIN & GỬI TÀI LIỆU E2EE -->
+      <!-- TAB 1: E2EE MESSAGING & FILES -->
       <section id="tab-sis" class="tab-panel active">
-        <!-- THANH CHUYỂN ĐỔI NHÂN VẬT TRÊN CÙNG -->
         <div class="persona-bar card">
           <div class="persona-current-info">
-            <span class="persona-label">TÀI KHOẢN ĐANG MỞ:</span>
-            <span id="activePersonaText" class="persona-highlight">👩 Alice Trần (@alice)</span>
-            <span class="badge badge-auth">Xác Thực Chữ Ký ECDSA: Đang Bật</span>
+            <span class="persona-label" data-i18n="persona_open_lbl">ACTIVE ACCOUNT:</span>
+            <span id="activePersonaText" class="persona-highlight">👩 Alice Tran (@alice)</span>
+            <span class="badge badge-auth" data-i18n="ecdsa_badge_on">ECDSA Signature Auth: Enabled</span>
           </div>
           <div class="persona-pills">
-            <button id="topBtnAlice" class="persona-pill active" title="Đăng nhập tài khoản Alice (Người gửi)">
-              <span class="pill-avatar">👩</span>
+            <button type="button" id="topBtnAlice" class="persona-pill active">
+              <span class="pill-avatar" aria-hidden="true">👩</span>
               <div class="pill-text">
-                <strong>Alice Trần</strong>
-                <small>Người gửi (P-256)</small>
+                <strong>Alice Tran</strong>
+                <small data-i18n="role_sender_p256">Sender (P-256)</small>
               </div>
             </button>
-            <button id="topBtnBob" class="persona-pill" title="Đăng nhập tài khoản Bob (Người nhận)">
-              <span class="pill-avatar">👨</span>
+            <button type="button" id="topBtnBob" class="persona-pill">
+              <span class="pill-avatar" aria-hidden="true">👨</span>
               <div class="pill-text">
-                <strong>Bob Lê</strong>
-                <small>Người nhận (P-256)</small>
+                <strong>Bob Le</strong>
+                <small data-i18n="role_recipient_p256">Recipient (P-256)</small>
               </div>
             </button>
-            <button id="topBtnCustom" class="persona-pill" title="Đăng ký hoặc đăng nhập tài khoản khác">
-              <span class="pill-avatar">👤</span>
+            <button type="button" id="topBtnCustom" class="persona-pill">
+              <span class="pill-avatar" aria-hidden="true">👤</span>
               <div class="pill-text">
-                <strong>Tài Khoản Khác</strong>
-                <small>Đăng nhập Passkey</small>
+                <strong data-i18n="other_account">Custom Account</strong>
+                <small data-i18n="passkey_login_sub">Passkey Sign-In</small>
               </div>
             </button>
           </div>
         </div>
 
-        <!-- SƠ ĐỒ BẢO MẬT 5 GIÂY SIÊU TRỰC QUAN -->
+        <!-- 5-SECOND VISUAL SECURITY PIPELINE -->
         <div class="pipeline-hero card">
           <div class="pipeline-header">
             <div>
               <div class="pipeline-tag-group">
-                <span class="badge badge-cyber">⚡ KIẾN TRÚC AN TOÀN ZERO-TRUST</span>
-                <span class="badge badge-info">Máy Chủ Zero-Knowledge</span>
+                <span class="badge badge-cyber" data-i18n="badge_zero_trust">⚡ ZERO-TRUST ARCHITECTURE</span>
+                <span class="badge badge-info" data-i18n="badge_zk_server">Zero-Knowledge Server</span>
               </div>
-              <h2 class="pipeline-title">Quy Trình Bảo Mật Dữ Liệu Đầu-Cuối (P-256 E2EE)</h2>
-              <p class="pipeline-desc">Khóa bí mật lưu tại trình duyệt. Máy chủ chỉ lưu bản mã. Chữ ký số chặn đứng mọi can thiệp.</p>
+              <h2 id="heading-sis" class="pipeline-title tab-heading-focus" tabindex="-1" data-i18n="pipeline_title">End-to-End Data Protection Pipeline (P-256 E2EE)</h2>
+              <p class="pipeline-desc" data-i18n="pipeline_desc">Private keys never leave your browser. The server stores only ciphertext. Digital signatures block every tampering attempt.</p>
             </div>
             <div class="pipeline-actions">
-              <button id="btnRunAutoDemo" class="btn btn-glowing">
-                <span class="icon-pulse">▶</span> Bấm Chạy Mô Phỏng 5 Giây
+              <button type="button" id="btnRunAutoDemo" class="btn btn-glowing">
+                <span class="icon-pulse" aria-hidden="true">▶</span> <span data-i18n="btn_run_5s">Run 5-Second Live Simulation</span>
               </button>
             </div>
           </div>
 
-          <!-- SƠ ĐỒ 3 CHẶNG KẾT NỐI -->
           <div class="flow-stages" id="flowStagesDiagram">
-            <!-- Chặng 1: Người gửi Alice -->
             <div class="flow-stage stage-sender" id="stageSender">
               <div class="stage-header">
-                <span class="stage-step-num">BƯỚC 1</span>
-                <span class="stage-role">TRÌNH DUYỆT ALICE</span>
+                <span class="stage-step-num" data-i18n="step1_num">STEP 1</span>
+                <span class="stage-role" data-i18n="step1_role">ALICE'S BROWSER</span>
               </div>
               <div class="stage-avatar-box">
-                <span class="stage-avatar-emoji">👩</span>
-                <div class="stage-avatar-name">Alice (Người gửi)</div>
+                <span class="stage-avatar-emoji" aria-hidden="true">👩</span>
+                <div class="stage-avatar-name" data-i18n="step1_name">Alice (Sender)</div>
               </div>
               <div class="stage-checklist">
-                <div class="check-item"><span class="check-icon">🔑</span> Khóa tạm Ephemeral ECDH (P-256)</div>
-                <div class="check-item"><span class="check-icon">🔒</span> Mã hóa AES-256-GCM</div>
-                <div class="check-item"><span class="check-icon">✍️</span> Ký số xác thực ECDSA (RFC 6979)</div>
+                <div class="check-item" data-i18n="step1_c1">🔑 Ephemeral ECDH Key (P-256)</div>
+                <div class="check-item" data-i18n="step1_c2">🔒 AES-256-GCM Encryption</div>
+                <div class="check-item" data-i18n="step1_c3">✍️ ECDSA Signature (RFC 6979)</div>
               </div>
-              <div class="stage-footer status-clean">🔒 Mã hóa hoàn tất tại máy khách</div>
+              <div class="stage-footer status-clean" data-i18n="step1_foot">🔒 Encrypted locally on client</div>
             </div>
 
-            <!-- Đường ống dẫn 1 -->
             <div class="flow-stream" id="stream1">
               <div class="stream-line"></div>
               <div class="stream-packet" id="packetAnim1">
-                <span class="packet-icon">📦</span>
-                <span class="packet-label">Bản mã bảo vệ</span>
+                <span class="packet-icon" aria-hidden="true">📦</span>
+                <span class="packet-label" data-i18n="packet1_lbl">Sealed Ciphertext</span>
               </div>
             </div>
 
-            <!-- Chặng 2: Máy chủ Zero-Knowledge -->
             <div class="flow-stage stage-server" id="stageServer">
               <div class="stage-header">
-                <span class="stage-step-num">BƯỚC 2</span>
-                <span class="stage-role">MÁY CHỦ TRUNG GIAN</span>
+                <span class="stage-step-num" data-i18n="step2_num">STEP 2</span>
+                <span class="stage-role" data-i18n="step2_role">RELAY SERVER</span>
               </div>
               <div class="stage-avatar-box">
-                <span class="stage-avatar-emoji">☁️</span>
-                <div class="stage-avatar-name">Máy Chủ FastAPI</div>
+                <span class="stage-avatar-emoji" aria-hidden="true">☁️</span>
+                <div class="stage-avatar-name" data-i18n="step2_name">FastAPI / Relay Store</div>
               </div>
               <div class="stage-checklist">
-                <div class="check-item"><span class="check-icon">🔒</span> Chỉ lưu chuỗi mã Hex trong SQLite</div>
-                <div class="check-item"><span class="check-icon">🚫</span> 0 byte bản rõ (Zero-Knowledge)</div>
-                <div class="check-item"><span class="check-icon">🛡️</span> Không có chìa khóa giải mã</div>
+                <div class="check-item" data-i18n="step2_c1">🔒 Stores only Hex strings in DB</div>
+                <div class="check-item" data-i18n="step2_c2">🚫 0 bytes of plaintext (Zero-Knowledge)</div>
+                <div class="check-item" data-i18n="step2_c3">🛡️ Holds zero decryption keys</div>
               </div>
-              <div class="stage-footer status-zk">🛡️ Dù lộ CSDL cũng không đọc được</div>
+              <div class="stage-footer status-zk" data-i18n="step2_foot">🛡️ Unreadable even if DB leaks</div>
             </div>
 
-            <!-- Đường ống dẫn 2 -->
             <div class="flow-stream" id="stream2">
               <div class="stream-line"></div>
               <div class="stream-packet" id="packetAnim2">
-                <span class="packet-icon">📦</span>
-                <span class="packet-label">Chuyển tiếp gói tin</span>
+                <span class="packet-icon" aria-hidden="true">📦</span>
+                <span class="packet-label" data-i18n="packet2_lbl">Forwards envelope</span>
               </div>
             </div>
 
-            <!-- Chặng 3: Người nhận Bob -->
             <div class="flow-stage stage-recipient" id="stageRecipient">
               <div class="stage-header">
-                <span class="stage-step-num">BƯỚC 3</span>
-                <span class="stage-role">TRÌNH DUYỆT BOB</span>
+                <span class="stage-step-num" data-i18n="step3_num">STEP 3</span>
+                <span class="stage-role" data-i18n="step3_role">BOB'S BROWSER</span>
               </div>
               <div class="stage-avatar-box">
-                <span class="stage-avatar-emoji">👨</span>
-                <div class="stage-avatar-name">Bob (Người nhận)</div>
+                <span class="stage-avatar-emoji" aria-hidden="true">👨</span>
+                <div class="stage-avatar-name" data-i18n="step3_name">Bob (Recipient)</div>
               </div>
               <div class="stage-checklist">
-                <div class="check-item"><span class="check-icon">✅</span> Xác minh chữ ký Alice (Chống giả mạo)</div>
-                <div class="check-item"><span class="check-icon">🔑</span> Tính khóa chung bí mật (ECDH)</div>
-                <div class="check-item"><span class="check-icon">💬</span> Giải mã và hiển thị dữ liệu gốc</div>
+                <div class="check-item" data-i18n="step3_c1">✅ Verifies Alice's ECDSA signature</div>
+                <div class="check-item" data-i18n="step3_c2">🔑 Derives shared secret (ECDH)</div>
+                <div class="check-item" data-i18n="step3_c3">💬 Decrypts &amp; renders original data</div>
               </div>
-              <div class="stage-footer status-bob">🎉 Chỉ Bob mới mở được</div>
+              <div class="stage-footer status-bob" data-i18n="step3_foot">🎉 Only Bob can unlock</div>
             </div>
           </div>
 
-          <!-- BẢNG ĐỐI CHIẾU THỰC TẾ KHI CHẠY MÔ PHỎNG -->
           <div id="simResultBox" class="sim-result-box hidden">
             <div class="sim-result-header">
-              <strong>🔍 BẰNG CHỨNG ĐỐI CHIẾU: MÁY CHỦ THẤY GÌ VS BOB THẤY GÌ</strong>
-              <button id="btnCloseSimProof" class="btn btn-outline btn-sm">✕ Đóng</button>
+              <strong data-i18n="sim_proof_title">🔍 LIVE PROOF: WHAT THE SERVER SEES VS WHAT BOB SEES</strong>
+              <button type="button" id="btnCloseSimProof" class="btn btn-outline btn-sm" data-i18n="btn_close">✕ Close</button>
             </div>
             <div class="sim-grid">
               <div class="sim-col sim-server-col">
                 <div class="sim-col-title text-danger">
-                  <span class="sim-col-icon">☁️</span> Máy chủ chỉ thấy bản mã vô nghĩa:
+                  <span class="sim-col-icon" aria-hidden="true">☁️</span> <span data-i18n="sim_server_col_title">Server sees meaningless ciphertext only:</span>
                 </div>
                 <div class="sim-code-preview" id="simServerView"></div>
-                <small class="muted">Máy chủ hoàn toàn mù trước nội dung (Zero-Knowledge).</small>
+                <small class="muted" data-i18n="sim_server_col_note">Server is completely blind to plaintext (Zero-Knowledge).</small>
               </div>
-              <div class="sim-arrow-divider">➔</div>
+              <div class="sim-arrow-divider" aria-hidden="true">➔</div>
               <div class="sim-col sim-bob-col">
                 <div class="sim-col-title text-success">
-                  <span class="sim-col-icon">👨</span> Bob giải mã chữ rõ bằng khóa riêng:
+                  <span class="sim-col-icon" aria-hidden="true">👨</span> <span data-i18n="sim_bob_col_title">Bob decrypts plaintext with his private key:</span>
                 </div>
                 <div class="sim-plaintext-preview" id="simBobView"></div>
-                <small class="muted">Chữ ký ECDSA: HỢP LỆ ✅ | Thẻ toàn vẹn AES-GCM: HỢP LỆ ✅</small>
+                <small class="muted" data-i18n="sim_bob_col_note">ECDSA Signature: VALID ✅ | AES-GCM Auth Tag: VALID ✅</small>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- KHU VỰC THAO TÁC 2 CỘT -->
+        <!-- 2-COLUMN COMPOSE + PASSKEY AUTH -->
         <div class="grid-2" style="margin-top: 18px;">
-          <!-- Khối soạn và gửi tin nhắn / tệp tin -->
           <div class="card compose-card">
             <div class="card-header-row">
-              <h3>🔒 Soạn Tin Nhắn Hoặc Gửi Tài Liệu Mật</h3>
+              <h3 data-i18n="compose_title">🔒 Compose Encrypted Message or Confidential File</h3>
               <span class="badge badge-cyber">Ephemeral ECDH + AES-GCM + ECDSA</span>
             </div>
             <div class="form-grid">
-              <label>
-                Người nhận
+              <label for="msgRecipient">
+                <span data-i18n="lbl_recipient">Recipient</span>
                 <select id="msgRecipient"></select>
               </label>
-              <label>
-                Đính kèm tệp tin (Tùy chọn, tối đa 5 MB)
+              <label for="msgFileInput">
+                <span data-i18n="lbl_file">Attach file (Optional, max 5 MB)</span>
                 <input id="msgFileInput" type="file" />
               </label>
             </div>
             <div style="display: flex; gap: 8px; margin-top: 10px; margin-bottom: 6px; align-items: center; flex-wrap: wrap;">
-              <span class="small muted">Nạp tin mẫu:</span>
-              <button type="button" class="btn btn-secondary btn-sm" id="btnPreset1">💰 Lệnh chuyển 500tr</button>
-              <button type="button" class="btn btn-secondary btn-sm" id="btnPreset2">📄 Hợp đồng bảo mật</button>
+              <span class="small muted" data-i18n="lbl_presets">Quick presets:</span>
+              <button type="button" class="btn btn-secondary btn-sm" id="btnPreset1" data-i18n="btn_preset1">💰 $20k Wire Approval</button>
+              <button type="button" class="btn btn-secondary btn-sm" id="btnPreset2" data-i18n="btn_preset2">📄 NDA Security Contract</button>
             </div>
-            <label style="margin-top: 6px; display: block;">
-              Nội dung tin nhắn mật / Ghi chú tài liệu
-              <textarea id="msgPlaintext" rows="3" placeholder="Nhập nội dung bí mật hoặc ghi chú cho tài liệu tại đây..."></textarea>
+            <label for="msgPlaintext" style="margin-top: 6px; display: block;">
+              <span data-i18n="lbl_plaintext">Confidential message / File note</span>
+              <textarea id="msgPlaintext" rows="3" data-i18n-placeholder="ph_plaintext" placeholder="Type confidential message or attachment note here..."></textarea>
             </label>
             <div class="btn-row" style="margin-top: 12px;">
-              <button id="btnSendEncrypted" class="btn btn-primary btn-large">
-                <span>🔐</span> Mã Hóa &amp; Ký Số (Gửi Ngay)
+              <button type="button" id="btnSendEncrypted" class="btn btn-primary btn-large">
+                <span aria-hidden="true">🔐</span> <span data-i18n="btn_send_enc">Encrypt &amp; Sign (Send Now)</span>
               </button>
             </div>
-            <div id="sendStatus" class="status-box hidden"></div>
+            <div id="sendStatus" class="status-box hidden" aria-live="polite"></div>
           </div>
 
-          <!-- Khối tạo khóa tự do & Đăng nhập Passkey -->
           <div class="card" id="customAuthCard">
             <div class="card-header-row">
-              <h3>👤 Đăng Ký Tài Khoản Mới (Passkey)</h3>
-              <span class="badge badge-info">Không Dùng Mật Khẩu</span>
+              <h3 data-i18n="passkey_card_title">👤 Register New Account (Passkey)</h3>
+              <span class="badge badge-info" data-i18n="badge_passwordless">Passwordless Auth</span>
             </div>
-            <p class="muted small">Trình duyệt tự tạo cặp khóa P-256 cất trong máy bạn. Mật khẩu không bao giờ được gửi qua mạng.</p>
+            <p class="muted small" data-i18n="passkey_desc">Your browser generates a P-256 keypair stored locally. No password is ever transmitted over the network.</p>
             <div class="form-grid">
-              <label>
-                Tên tài khoản (Username)
-                <input id="authUsername" type="text" placeholder="ví dụ: cuong_security" />
+              <label for="authUsername">
+                <span data-i18n="lbl_username">Username</span>
+                <input id="authUsername" type="text" autocomplete="username" data-i18n-placeholder="ph_username" placeholder="e.g. auditor_01" />
               </label>
-              <label>
-                Tên hiển thị
-                <input id="authDisplayName" type="text" placeholder="ví dụ: Nguyễn Văn Cường" />
+              <label for="authDisplayName">
+                <span data-i18n="lbl_display_name">Display Name</span>
+                <input id="authDisplayName" type="text" autocomplete="name" data-i18n-placeholder="ph_display_name" placeholder="e.g. Alex Auditor" />
               </label>
             </div>
             <div class="btn-row" style="margin-top: 12px;">
-              <button id="btnRegisterLogin" class="btn btn-primary">Tạo Khóa P-256 &amp; Đăng Ký</button>
-              <button id="btnChallengeLogin" class="btn btn-secondary">Đăng Nhập Khóa Có Sẵn</button>
+              <button type="button" id="btnRegisterLogin" class="btn btn-primary" data-i18n="btn_register_login">Generate P-256 Key &amp; Register</button>
+              <button type="button" id="btnChallengeLogin" class="btn btn-secondary" data-i18n="btn_challenge_login">Sign In with Saved Key</button>
             </div>
-            <div id="authLog" class="status-box hidden"></div>
+            <div id="authLog" class="status-box hidden" aria-live="polite"></div>
           </div>
         </div>
 
-        <!-- Cửa sổ Soi CSDL Máy Chủ (Zero-Knowledge Audit) -->
+        <!-- Server Zero-Knowledge Inspector -->
         <div id="serverInspectorCard" class="card hidden" style="margin-top: 18px;">
           <div class="card-header-row">
             <div>
-              <h3>☁️ Soi Bản Mã Thô Trong Cơ Sở Dữ Liệu Máy Chủ (Zero-Knowledge)</h3>
-              <p class="muted small">Đây là nguyên văn dữ liệu JSON lưu trong bảng <code>messages</code> của SQLite. Toàn bộ là mã hex, hoàn toàn không có chữ rõ!</p>
+              <h3 data-i18n="inspector_title">☁️ Raw Ciphertext in Server Database (Zero-Knowledge Inspector)</h3>
+              <p class="muted small" data-i18n-html="inspector_desc">Exact JSON records stored inside the SQLite <code>messages</code> table. 100% hex ciphertext — zero plaintext!</p>
             </div>
-            <span class="badge badge-warning">Máy Chủ Hoàn Toàn Không Thể Đọc Trộm</span>
+            <span class="badge badge-warning" data-i18n="badge_server_blind">Server Cannot Read Plaintext</span>
           </div>
           <pre id="serverInspectorPre" class="code-box"></pre>
         </div>
 
-        <!-- DANH SÁCH TIN NHẮN & TÀI LIỆU TRONG HỘP THƯ -->
+        <!-- Encrypted Mailbox -->
         <div class="card" style="margin-top: 18px;">
           <div class="card-header-row">
             <div>
-              <h3>📥 Hộp Thư Mã Hóa &amp; Tin Nhắn Đã Gửi</h3>
-              <p class="muted small">Tin nhắn được giải mã và kiểm tra chữ ký số trực tiếp trên máy của bạn bằng khóa bí mật riêng.</p>
+              <h3 data-i18n="inbox_title">📥 Encrypted Mailbox &amp; Sent Envelopes</h3>
+              <p class="muted small" data-i18n="inbox_desc">Envelopes are verified and decrypted directly inside your browser using your private key.</p>
             </div>
             <div class="btn-row">
-              <button id="btnRefreshSis" class="btn btn-secondary">↻ Tải Lại Hộp Thư</button>
-              <button id="btnToggleInspector" class="btn btn-outline">👁️ Soi CSDL Máy Chủ</button>
+              <button type="button" id="btnRefreshSis" class="btn btn-secondary" data-i18n="btn_refresh_inbox">↻ Refresh Mailbox</button>
+              <button type="button" id="btnToggleInspector" class="btn btn-outline" data-i18n="btn_toggle_inspector">👁️ Inspect Server DB</button>
             </div>
           </div>
           <div id="messagesList" class="messages-list">
-            <p class="muted">Đang tải dữ liệu hộp thư...</p>
+            <p class="muted" data-i18n="loading_inbox">Loading encrypted mailbox...</p>
           </div>
         </div>
       </section>
 
-      <!-- TAB 2: PHÒNG THÍ NGHIỆM THUẬT TOÁN ECC -->
+      <!-- TAB 2: ECC CRYPTOGRAPHY LAB -->
       <section id="tab-lab" class="tab-panel">
         <header class="page-header">
           <div>
-            <h2>Phòng Thí Nghiệm &amp; Nghiên Cứu Thuật Toán ECC</h2>
-            <p>Chạy trực tiếp bằng lõi Python <code>ecc_core</code> tự lập trình của nhóm (Toán Affine, Tối ưu Jacobian, ECDH, ECDSA RFC 6979, ECIES)</p>
+            <h2 id="heading-lab" class="tab-heading-focus" tabindex="-1" data-i18n="lab_header_title">ECC Algorithm &amp; Cryptographic Research Lab</h2>
+            <p data-i18n-html="lab_header_desc">Powered by our from-scratch <code>ecc_core</code> engine (Finite-field Affine, Jacobian projective speedup, ECDH, RFC 6979 ECDSA, ECIES)</p>
           </div>
         </header>
 
         <div class="grid-2">
-          <!-- Đồ thị trực quan đường cong nhỏ toy_p97 -->
           <div class="card">
-            <h3>Đồ Thị Đường Cong Elliptic Hữu Hạn (<code>toy_p97</code>)</h3>
-            <p class="muted small">Phương trình: <code>y² ≡ x³ + 3x + 2 (mod 97)</code>, bậc nguyên tố <code>n = 103</code>, điểm sinh <code>G = (2, 4)</code></p>
+            <h3 data-i18n-html="toy_curve_title">Finite-Field Elliptic Curve Plot (<code>toy_p97</code>)</h3>
+            <p class="muted small" data-i18n-html="toy_curve_desc">Equation: <code>y² ≡ x³ + 3x + 2 (mod 97)</code>, prime order <code>n = 103</code>, generator <code>G = (2, 4)</code></p>
             <div class="svg-wrap">
-              <svg id="curveSvg" viewBox="0 0 420 420" width="100%" height="360"></svg>
+              <svg id="curveSvg" role="img" aria-label="Finite-field elliptic curve toy_p97 plot" viewBox="0 0 420 420" width="100%" height="360"></svg>
             </div>
             <div class="legend-row small">
-              <span><i class="dot dot-all"></i> Các điểm trên đường cong</span>
-              <span><i class="dot dot-p"></i> Điểm P</span>
-              <span><i class="dot dot-q"></i> Điểm Q</span>
-              <span><i class="dot" style="background:#a855f7;"></i> Điểm giao -(P+Q)</span>
-              <span><i class="dot dot-sum"></i> Tổng P+Q</span>
-              <span><i class="dot dot-kp"></i> Tích k·P</span>
-              <span style="color:#f59e0b; font-weight:bold;">— Đường nối P&amp;Q</span>
-              <span style="color:#00f2fe; font-weight:bold;">--- Trục đối xứng</span>
+              <span><i class="dot dot-all"></i> <span data-i18n="leg_all">Curve points</span></span>
+              <span><i class="dot dot-p"></i> <span data-i18n="leg_p">Point P</span></span>
+              <span><i class="dot dot-q"></i> <span data-i18n="leg_q">Point Q</span></span>
+              <span><i class="dot" style="background:#a855f7;"></i> <span data-i18n="leg_neg">Intersection -(P+Q)</span></span>
+              <span><i class="dot dot-sum"></i> <span data-i18n="leg_sum">Sum P+Q</span></span>
+              <span><i class="dot dot-kp"></i> <span data-i18n="leg_kp">Scalar k·P</span></span>
+              <span style="color:#f59e0b; font-weight:bold;" data-i18n="leg_secant">— Line P&amp;Q</span>
+              <span style="color:#00f2fe; font-weight:bold;" data-i18n="leg_refl">--- Reflection axis</span>
             </div>
           </div>
 
-          <!-- Phép cộng điểm và bảng trace từng bit -->
           <div class="card">
-            <h3>Phép Cộng Điểm &amp; Từng Bước Nhân Vô Hướng (Double-and-Add)</h3>
-            <div class="form-grid-3">
-              <label>Điểm P (x, y)
+            <h3 data-i18n="point_ops_title">Point Addition &amp; Bit-by-Bit Scalar Multiplication (Double-and-Add)</h3>
+            <div class="form-grid-3" style="margin-top: 12px;">
+              <label for="labPointP"><span data-i18n="lbl_point_p">Point P (x, y)</span>
                 <select id="labPointP"></select>
               </label>
-              <label>Điểm Q (x, y)
+              <label for="labPointQ"><span data-i18n="lbl_point_q">Point Q (x, y)</span>
                 <select id="labPointQ"></select>
               </label>
-              <label>Hệ số k
+              <label for="labScalarK"><span data-i18n="lbl_scalar_k">Scalar k</span>
                 <input id="labScalarK" type="number" min="1" max="102" value="7" />
               </label>
             </div>
-            <div class="btn-row" style="margin-top: 10px;">
-              <button id="btnComputePointOps" class="btn btn-primary">Tính P+Q, 2P, k·P</button>
-            </div>
-            <div id="pointOpsSummary" class="status-box" style="margin-top: 10px;"></div>
+            <button type="button" id="btnComputePointOps" class="btn btn-primary" style="margin-top: 10px;" data-i18n="btn_compute_ops">Compute P + Q, 2P &amp; k·P</button>
+            <div id="pointOpsSummary" class="status-box ok" style="margin-top: 12px;"></div>
             <div id="pointOpsTrace" class="trace-table-wrap"></div>
           </div>
         </div>
 
-        <div class="grid-3" style="margin-top: 16px;">
-          <!-- Thí nghiệm ECDH -->
+        <div class="grid-3" style="margin-top: 18px;">
           <div class="card">
-            <h3>Bắt Tay Trao Đổi Khóa ECDH + HKDF</h3>
-            <label>Đường cong
+            <h3 data-i18n="ecdh_card_title">ECDH Key Exchange + HKDF</h3>
+            <label for="labEcdhCurve"><span data-i18n="lbl_curve">Elliptic Curve</span>
               <select id="labEcdhCurve">
-                <option value="secp256r1">secp256r1 (Chuẩn NIST P-256)</option>
+                <option value="secp256r1">secp256r1 (NIST P-256)</option>
                 <option value="secp256k1">secp256k1 (Bitcoin/Ethereum)</option>
                 <option value="secp384r1">secp384r1 (NIST P-384)</option>
-                <option value="toy_p97">toy_p97 (Đường cong học thuật)</option>
               </select>
             </label>
-            <button id="btnRunEcdhLab" class="btn btn-primary" style="margin-top: 10px; width: 100%;">Chạy Bắt Tay ECDH</button>
-            <pre id="labEcdhOut" class="code-box small" style="margin-top: 10px;">Bấm nút để chạy thử...</pre>
+            <button type="button" id="btnRunEcdhLab" class="btn btn-primary" style="margin-top: 10px; width: 100%;" data-i18n="btn_run_ecdh">Run ECDH Handshake</button>
+            <pre id="labEcdhOut" class="code-box small" style="margin-top: 10px;" data-i18n="click_to_run">Click button above to execute...</pre>
           </div>
 
-          <!-- Thí nghiệm ECDSA và Tấn công Nonce Reuse -->
           <div class="card">
-            <h3>Ký ECDSA &amp; Tấn Công Trùng Nonce</h3>
-            <label>Nội dung cần ký
-              <input id="labEcdsaMsg" type="text" value="Phê duyệt lệnh chuyển tiền #9021" />
+            <h3 data-i18n="ecdsa_card_title">ECDSA Signing &amp; Sony PS3 Nonce Attack</h3>
+            <label for="labEcdsaMsg"><span data-i18n="lbl_ecdsa_msg">Message to sign</span>
+              <input id="labEcdsaMsg" type="text" data-i18n-value-default="val_ecdsa_msg" value="Approve wire transfer #9021" />
             </label>
             <label class="checkbox-row" style="margin-top: 8px;">
-              <input id="labNonceReuse" type="checkbox" checked />
-              <span>Biểu diễn khôi phục Khóa Bí Mật khi bị trùng Nonce k</span>
+              <input id="labNonceReuse" type="checkbox" />
+              <span data-i18n="lbl_nonce_reuse">Simulate reused Nonce k (Sony PS3 Private Key Recovery)</span>
             </label>
-            <button id="btnRunEcdsaLab" class="btn btn-primary" style="margin-top: 10px; width: 100%;">Ký Số, Soi Dấu &amp; Tấn Công Demo</button>
-            <pre id="labEcdsaOut" class="code-box small" style="margin-top: 10px;">Bấm nút để chạy thử...</pre>
+            <button type="button" id="btnRunEcdsaLab" class="btn btn-primary" style="margin-top: 10px; width: 100%;" data-i18n="btn_run_ecdsa">Sign, Verify &amp; Run Attack Demo</button>
+            <pre id="labEcdsaOut" class="code-box small" style="margin-top: 10px;" data-i18n="click_to_run">Click button above to execute...</pre>
           </div>
 
-          <!-- Thí nghiệm ECIES -->
           <div class="card">
-            <h3>Mã Hóa &amp; Cạy Hộp ECIES</h3>
-            <label>Văn bản mật
-              <input id="labEciesMsg" type="text" value="Tài liệu bí mật quốc gia 2026" />
+            <h3 data-i18n="ecies_card_title">ECIES Seal &amp; Tamper Test</h3>
+            <label for="labEciesMsg"><span data-i18n="lbl_ecies_msg">Secret plaintext</span>
+              <input id="labEciesMsg" type="text" data-i18n-value-default="val_ecies_msg" value="Classified National Report 2026" />
             </label>
             <label class="checkbox-row" style="margin-top: 8px;">
               <input id="labEciesTamper" type="checkbox" />
-              <span>Cố tình sửa 1 byte bản mã (Mô phỏng Hacker cạy hộp)</span>
+              <span data-i18n="lbl_ecies_tamper">Corrupt 1 ciphertext byte (Simulate MITM attacker)</span>
             </label>
-            <button id="btnRunEciesLab" class="btn btn-primary" style="margin-top: 10px; width: 100%;">Chạy Thử Quy Trình ECIES</button>
-            <pre id="labEciesOut" class="code-box small" style="margin-top: 10px;">Bấm nút để chạy thử...</pre>
+            <button type="button" id="btnRunEciesLab" class="btn btn-primary" style="margin-top: 10px; width: 100%;" data-i18n="btn_run_ecies">Run ECIES Pipeline</button>
+            <pre id="labEciesOut" class="code-box small" style="margin-top: 10px;" data-i18n="click_to_run">Click button above to execute...</pre>
           </div>
         </div>
       </section>
 
-      <!-- TAB 3: ĐUA TỐC ĐỘ ECC VS RSA -->
+      <!-- TAB 3: ECC VS RSA PERFORMANCE BENCHMARK -->
       <section id="tab-bench" class="tab-panel">
         <header class="page-header">
           <div>
-            <h2>Đua Tốc Độ: So Sánh Hiệu Năng ECC vs RSA</h2>
-            <p>Đo đạc trực tiếp trên cùng nền tảng Python thuần ở các mức an toàn tương đương theo chuẩn NIST SP 800-57 + Tối ưu hóa Jacobian</p>
+            <h2 id="heading-bench" class="tab-heading-focus" tabindex="-1" data-i18n="bench_header_title">Speed Race: ECC vs RSA Performance Benchmark</h2>
+            <p data-i18n="bench_header_desc">Live measurement at equivalent NIST SP 800-57 security levels + Projective Jacobian vs Affine speedup</p>
           </div>
           <div class="btn-row">
-            <button id="btnRunQuickBench" class="btn btn-primary">▶ Chạy Đua Tốc Độ Nhanh (~1 giây)</button>
-            <button id="btnRunFullBench" class="btn btn-secondary">▶ Chạy Đầy Đủ (+RSA-3072, ~4 giây)</button>
+            <button type="button" id="btnRunQuickBench" class="btn btn-primary" data-i18n="btn_quick_bench">▶ Quick Benchmark (~1s)</button>
+            <button type="button" id="btnRunFullBench" class="btn btn-secondary" data-i18n="btn_full_bench">▶ Full Benchmark (+RSA-3072)</button>
           </div>
         </header>
 
         <div class="grid-2">
           <div class="card">
-            <h3>Tối Ưu Tọa Độ: Jacobian vs Affine (Đường cong <code>secp256r1</code>)</h3>
-            <div id="coordBenchBox" class="status-box">Bấm nút chạy đua tốc độ ở trên để đo mức tăng tốc giữa Affine và Jacobian.</div>
+            <h3 data-i18n-html="coord_card_title">Coordinate Optimization: Jacobian vs Affine (<code>secp256r1</code>)</h3>
+            <div id="coordBenchBox" class="status-box" data-i18n="coord_card_wait">Click a benchmark button above to measure Affine vs Jacobian speedup.</div>
           </div>
           <div class="card">
-            <h3>So Sánh Kích Thước Khóa &amp; Chữ Ký Số (Byte)</h3>
+            <h3 data-i18n="size_chart_title">Public Key &amp; Signature Size Comparison (Bytes)</h3>
             <canvas id="sizeChartCanvas" width="520" height="220"></canvas>
           </div>
         </div>
 
         <div class="card" style="margin-top: 16px;">
-          <h3>Bảng Kết Quả Đo Thời Gian Thực Tế (Mili-giây — ms)</h3>
+          <h3 data-i18n="bench_table_title">Live Execution Time Results (Milliseconds — ms)</h3>
           <div id="benchResultsTableWrap" class="table-wrap">
-            <p class="muted">Bấm "Chạy Đua Tốc Độ Nhanh" ở trên để đo trực tiếp trên máy tính của bạn.</p>
+            <p class="muted" data-i18n="bench_table_wait">Click "Quick Benchmark" or "Full Benchmark" above to run live measurements.</p>
           </div>
         </div>
 
         <div class="card" style="margin-top: 16px;">
-          <h3>Bảng Quy Đổi Mức An Toàn NIST SP 800-57 &amp; Mức Tiết Kiệm Băng Thông</h3>
+          <h3 data-i18n="nist_table_title">NIST SP 800-57 Security Equivalence &amp; Bandwidth Savings</h3>
           <div id="nistTableWrap" class="table-wrap"></div>
         </div>
       </section>
 
-      <!-- TAB 4: SỔ NHẬT KÝ KIỂM TOÁN & KIẾN TRÚC -->
+      <!-- TAB 4: SHA-256 HASH-CHAINED AUDIT LOG -->
       <section id="tab-audit" class="tab-panel">
         <header class="page-header">
           <div>
-            <h2>Sổ Nhật Ký Kiểm Toán Chuỗi Băm SHA-256 &amp; Mô Hình Kiến Trúc</h2>
-            <p>Mỗi sự kiện bảo mật được băm nối tiếp nhau bằng SHA-256 như một cuốn sổ cái chuỗi khối mini: <code>H_i = SHA256(H_{i-1} || timestamp || actor || action || details)</code></p>
+            <h2 id="heading-audit" class="tab-heading-focus" tabindex="-1" data-i18n="audit_header_title">SHA-256 Hash-Chained Audit Log &amp; Security Architecture</h2>
+            <p data-i18n-html="audit_header_desc">Every security event is cryptographically chained like a mini-blockchain: <code>H_i = SHA256(H_{i-1} || timestamp || actor || action || details)</code></p>
           </div>
           <div class="btn-row">
-            <button id="btnVerifyAudit" class="btn btn-primary">✓ Kiểm Tra Tính Toàn Vẹn Chuỗi Băm</button>
+            <button type="button" id="btnVerifyAudit" class="btn btn-primary" data-i18n="btn_verify_audit">✓ Verify Hash-Chain Integrity</button>
           </div>
         </header>
 
-        <div id="auditIntegrityBanner" class="status-box hidden"></div>
+        <div id="auditIntegrityBanner" class="status-box hidden" aria-live="polite"></div>
 
         <div class="card">
-          <h3>Tổng Quan 4 Tầng Bảo Mật Của Hệ Thống</h3>
+          <h3 data-i18n="arch_main_title">4-Layer Defense-in-Depth Architecture</h3>
           <div class="arch-grid">
             <div class="arch-box">
-              <h4>1. Đăng Nhập Không Mật Khẩu</h4>
-              <p>Mỗi người dùng sở hữu cặp khóa P-256 riêng. Đăng nhập bằng cách ký số lên câu đố ngẫu nhiên của Server (không gửi mật khẩu, chống phát lại).</p>
+              <h4 data-i18n="arch1_t">1. Passwordless Passkey Auth</h4>
+              <p data-i18n="arch1_p">Each user holds a local P-256 keypair and signs a one-time 120s server challenge (zero password exposure, replay-proof).</p>
             </div>
             <div class="arch-box">
-              <h4>2. Khóa Tạm Thời (Forward Secrecy)</h4>
-              <p>Mỗi tin nhắn/tệp tin đều sinh chìa khóa phiên tạm <code>(k, kG)</code> riêng, rèn khóa qua HKDF-SHA256 và khóa két AES-256-GCM.</p>
+              <h4 data-i18n="arch2_t">2. Ephemeral Forward Secrecy</h4>
+              <p data-i18n-html="arch2_p">Every message/file generates a fresh ephemeral keypair <code>(k, kG)</code>, derives an HKDF-SHA256 key, and seals with AES-256-GCM.</p>
             </div>
             <div class="arch-box">
-              <h4>3. Chữ Ký Chống Chối Bỏ</h4>
-              <p>Người gửi đóng dấu chữ ký ECDSA lên toàn bộ gói tin. Máy chủ kiểm tra đúng con dấu mới lưu; người nhận kiểm tra trước khi mở.</p>
+              <h4 data-i18n="arch3_t">3. Non-Repudiation Signatures</h4>
+              <p data-i18n="arch3_p">Sender signs the entire envelope with RFC 6979 ECDSA. Both relay server and recipient verify authenticity before opening.</p>
             </div>
             <div class="arch-box">
-              <h4>4. Máy Chủ Mù (Zero-Knowledge)</h4>
-              <p>CSDL SQLite chỉ lưu bản mã, khóa công khai và chữ ký. Kể cả quản trị viên hay hacker cướp database cũng không đọc được nội dung.</p>
+              <h4 data-i18n="arch4_t">4. Zero-Knowledge Storage</h4>
+              <p data-i18n="arch4_p">Database stores only hex ciphertexts, public keys, and signatures. Even a compromised DB reveals 0 bytes of plaintext.</p>
             </div>
           </div>
         </div>
 
         <div class="card" style="margin-top: 16px;">
-          <h3>Sổ Nhật Ký Ghi Nhận Sự Kiện Hệ Thống</h3>
+          <h3 data-i18n="audit_table_title">System Security Event Ledger</h3>
           <div id="auditTableWrap" class="table-wrap"></div>
         </div>
       </section>
     </main>
   </div>
 
-  <script src="/static/app.js?v=4.4"></script>
+  <script src="./static/i18n.js?v=5.0"></script>
+  <script src="./static/standalone_engine.js?v=5.0"></script>
+  <script src="./static/app.js?v=5.0"></script>
 </body>
 </html>

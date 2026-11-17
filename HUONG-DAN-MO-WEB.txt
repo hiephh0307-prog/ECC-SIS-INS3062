@@ -28,6 +28,10 @@
 
 3. CÁCH 2 — MỞ WEB ONLINE 24/7 CHO CẢ NHÓM & GIẢNG VIÊN (KHÔNG CẦN CÀI GÌ)
 ------------------------------------------------------------------------
+  * LINK WEB TRỰC TIẾP TRÊN GITHUB PAGES (MỞ NGAY 24/7, KHÔNG CẦN CÀI ĐẶT):
+    https://hiephh0307-prog.github.io/ECC-SIS-INS3062/
+    (Mặc định Tiếng Anh — bấm nút [🇬🇧 EN | 🇻🇳 VI] góc trái để đổi ngôn ngữ tức thì!)
+
   - Mã nguồn GitHub: https://github.com/hiephh0307-prog/ECC-SIS-INS3062
   - Link Deploy Render 1 chạm (lưu CSDL trong session, HTTPS chuẩn WebCrypto):
     https://render.com/deploy?repo=https://github.com/hiephh0307-prog/ECC-SIS-INS3062

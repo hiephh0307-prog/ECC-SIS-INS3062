@@ -57,6 +57,10 @@ python -m unittest discover -s tests -v
 
 ---
 
+## Live Bilingual Web Demo (EN / VI — 24/7 GitHub Pages)
+
+- **Open Live Web App Now:** https://hiephh0307-prog.github.io/ECC-SIS-INS3062/
+
 ## One-Click Run & Cloud Deploy (24/7 Public HTTPS for Team Demo)
 
 ### Windows 1-Click Local Run

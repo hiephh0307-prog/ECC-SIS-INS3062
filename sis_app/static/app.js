@@ -9,7 +9,13 @@ const STATE = {
   pubHex: null,
   users: [],
   toyCurveData: null,
+  lastPointOpsRes: null,
+  lastBenchData: null,
+  lastAuditVerifyRes: null,
+  usingStandalone: window.location.hostname.endsWith(".github.io") || window.location.protocol === "file:",
 };
+
+const t = (key, vars) => (window.ECC_I18N ? window.ECC_I18N.t(key, vars) : key);
 
 // ----------------------------------------------------------------------
 // Encoding & WebCrypto P-256 Helpers
@@ -227,7 +233,7 @@ async function verifyAndDecryptMessage(myJwk, msg) {
     return {
       sigValid: false,
       decrypted: false,
-      error: "Xác thực chữ ký ECDSA THẤT BẠI! Gói tin đã bị sửa đổi trên đường truyền hoặc người gửi giả mạo.",
+      error: t("err_ecdsa_verify"),
     };
   }
 
@@ -236,7 +242,7 @@ async function verifyAndDecryptMessage(myJwk, msg) {
       sigValid: true,
       decrypted: false,
       senderCopy: true,
-      error: "Được mã hóa bằng ECDH tạm thời (Ephemeral) dành riêng cho khóa bí mật của người nhận. (Bảo mật chuyển tiếp Forward-Secrecy: chỉ người nhận mới giải mã được).",
+      error: t("sender_copy_note"),
     };
   }
 
@@ -248,33 +254,60 @@ async function verifyAndDecryptMessage(myJwk, msg) {
       ctBytes
     );
     return { sigValid: true, decrypted: true, plaintextBytes: new Uint8Array(ptBuf) };
-  } catch (err) {
+  } catch (_) {
     return {
       sigValid: true,
       decrypted: false,
-      error: "Xác thực thẻ xác thực (Auth Tag) AES-256-GCM THẤT BẠI! Dữ liệu hoặc thông tin phụ trợ AAD đã bị sửa đổi trái phép.",
+      error: t("err_gcm_tag"),
     };
   }
 }
 
 // ----------------------------------------------------------------------
-// HTTP API Helper
+// Hybrid HTTP API Helper (Python FastAPI first -> Browser Engine fallback)
 // ----------------------------------------------------------------------
+function updateModeBadge() {
+  const el = document.getElementById("runtimeModeBadge");
+  if (!el) return;
+  el.textContent = STATE.usingStandalone ? t("mode_standalone") : t("mode_backend");
+}
+
 async function api(path, options = {}) {
   const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
   if (STATE.token) {
     headers["Authorization"] = `Bearer ${STATE.token}`;
   }
-  const resp = await fetch(path, { ...options, headers });
-  const data = await resp.json().catch(() => ({}));
-  if (!resp.ok) {
-    throw new Error(data.detail || `HTTP ${resp.status}`);
+
+  if (STATE.usingStandalone && window.ECC_STANDALONE_API) {
+    return window.ECC_STANDALONE_API.handle(path, { ...options, headers });
   }
-  return data;
+
+  try {
+    const resp = await fetch(path, { ...options, headers });
+    const ct = resp.headers.get("content-type") || "";
+    if ((resp.status === 404 || resp.status === 405 || !ct.includes("application/json")) && window.ECC_STANDALONE_API) {
+      STATE.usingStandalone = true;
+      updateModeBadge();
+      return window.ECC_STANDALONE_API.handle(path, { ...options, headers });
+    }
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok) {
+      throw new Error(data.detail || `HTTP ${resp.status}`);
+    }
+    return data;
+  } catch (err) {
+    if (window.ECC_STANDALONE_API && (err instanceof TypeError || String(err.message).includes("Failed to fetch"))) {
+      STATE.usingStandalone = true;
+      updateModeBadge();
+      return window.ECC_STANDALONE_API.handle(path, { ...options, headers });
+    }
+    throw err;
+  }
 }
 
 function showStatus(elId, msg, ok = true) {
   const el = document.getElementById(elId);
+  if (!el) return;
   el.textContent = msg;
   el.classList.remove("hidden", "ok", "err");
   el.classList.add(ok ? "ok" : "err");
@@ -334,7 +367,7 @@ async function loginWithStoredKey(username, jwk) {
   STATE.pubHex = verified.public_key_hex;
 
   const badge = document.getElementById("activeUserBadge");
-  badge.innerHTML = `<span class="status-indicator"></span> ${verified.display_name} (@${verified.username})`;
+  badge.innerHTML = `<span class="status-indicator"></span> ${escapeHtml(verified.display_name)} (@${escapeHtml(verified.username)})`;
   badge.classList.remove("offline");
   badge.classList.add("online");
 
@@ -398,20 +431,18 @@ async function ensureDemoPersona(username, displayName) {
       }),
     });
   } else if (existing.public_key_hex !== pubHex) {
-    throw new Error(
-      `Người dùng '${username}' đã tồn tại trên máy chủ với khóa khác. Vui lòng đăng ký tên người dùng mới.`
-    );
+    throw new Error(t("err_user_exists_diff_key", { user: username }));
   }
 
   await loginWithStoredKey(username, jwk);
-  showStatus("authLog", `Đã đăng nhập với tư cách ${displayName} (@${username}) qua Thử thách - Phản hồi ECDSA.`, true);
+  showStatus("authLog", t("msg_logged_in_as", { name: displayName, user: username }), true);
 }
 
 async function handleRegisterAndLogin() {
   const username = document.getElementById("authUsername").value.trim();
   const displayName = document.getElementById("authDisplayName").value.trim() || username;
   if (!username) {
-    showStatus("authLog", "Vui lòng nhập tên người dùng.", false);
+    showStatus("authLog", t("err_enter_username"), false);
     return;
   }
   try {
@@ -427,7 +458,7 @@ async function handleRegisterAndLogin() {
     });
     localStorage.setItem(STORAGE_PREFIX + username, JSON.stringify(jwk));
     await loginWithStoredKey(username, jwk);
-    showStatus("authLog", `Đã sinh cặp khóa P-256, đăng ký '${username}' và xác thực thành công bằng ECDSA!`, true);
+    showStatus("authLog", t("msg_registered_ok", { user: username }), true);
   } catch (err) {
     showStatus("authLog", err.message, false);
   }
@@ -436,17 +467,17 @@ async function handleRegisterAndLogin() {
 async function handleChallengeLogin() {
   const username = document.getElementById("authUsername").value.trim();
   if (!username) {
-    showStatus("authLog", "Nhập tên người dùng để đăng nhập bằng khóa đã lưu trong trình duyệt.", false);
+    showStatus("authLog", t("err_enter_username_login"), false);
     return;
   }
   const saved = localStorage.getItem(STORAGE_PREFIX + username);
   if (!saved) {
-    showStatus("authLog", `Không tìm thấy khóa bí mật P-256 nội bộ trong trình duyệt cho '${username}'.`, false);
+    showStatus("authLog", t("err_no_local_key", { user: username }), false);
     return;
   }
   try {
     await loginWithStoredKey(username, JSON.parse(saved));
-    showStatus("authLog", `Đã xác thực '${username}' thành công qua thử thách phản hồi ECDSA!`, true);
+    showStatus("authLog", t("msg_challenge_ok", { user: username }), true);
   } catch (err) {
     showStatus("authLog", err.message, false);
   }
@@ -474,13 +505,13 @@ async function refreshUsers() {
 
 async function handleSendEncrypted() {
   if (!STATE.token || !STATE.jwk) {
-    showStatus("sendStatus", "Vui lòng đăng nhập trước khi gửi tin.", false);
+    showStatus("sendStatus", t("err_login_first"), false);
     return;
   }
   const recipient = document.getElementById("msgRecipient").value;
   const targetUser = STATE.users.find((u) => u.username === recipient);
   if (!targetUser) {
-    showStatus("sendStatus", "Vui lòng chọn người nhận hợp lệ trong danh sách.", false);
+    showStatus("sendStatus", t("err_pick_recipient"), false);
     return;
   }
 
@@ -496,7 +527,7 @@ async function handleSendEncrypted() {
     if (fileInput.files && fileInput.files.length > 0) {
       const file = fileInput.files[0];
       if (file.size > 5 * 1024 * 1024) {
-        showStatus("sendStatus", "Tập tin vượt quá giới hạn demo 5 MB.", false);
+        showStatus("sendStatus", t("err_file_too_large"), false);
         return;
       }
       msgType = "file";
@@ -512,7 +543,7 @@ async function handleSendEncrypted() {
       plaintextBytes = textEnc.encode(wrapper);
     } else {
       if (!textVal.trim()) {
-        showStatus("sendStatus", "Vui lòng nhập nội dung tin nhắn hoặc đính kèm tập tin.", false);
+        showStatus("sendStatus", t("err_empty_payload"), false);
         return;
       }
       plaintextBytes = textEnc.encode(textVal);
@@ -544,7 +575,7 @@ async function handleSendEncrypted() {
     fileInput.value = "";
     showStatus(
       "sendStatus",
-      `Đã mã hóa (${env.ciphertext_hex.length / 2} bytes) & ký số ECDSA thành công tới @${recipient}.`,
+      t("msg_sent_ok", { bytes: env.ciphertext_hex.length / 2, user: recipient }),
       true
     );
     await refreshMessages();
@@ -555,14 +586,14 @@ async function handleSendEncrypted() {
 }
 
 // ----------------------------------------------------------------------
-// Upgraded Message Cards with Clear Cryptographic Indicators
+// Message Cards with Cryptographic Indicators
 // ----------------------------------------------------------------------
 async function refreshMessages() {
   if (!STATE.token) return;
   const data = await api("/api/messages");
   const container = document.getElementById("messagesList");
   if (!data.messages.length) {
-    container.innerHTML = `<p class="muted">Hộp thư của @${escapeHtml(STATE.username)} chưa có gói tin mã hóa nào.</p>`;
+    container.innerHTML = `<p class="muted">${escapeHtml(t("empty_inbox", { user: STATE.username }))}</p>`;
     return;
   }
 
@@ -579,12 +610,12 @@ async function refreshMessages() {
 
     const dirBadge =
       msg.recipient === STATE.username
-        ? `<span class="badge badge-info">📥 Từ @${escapeHtml(msg.sender)}</span>`
-        : `<span class="badge badge-warning">📤 Tới @${escapeHtml(msg.recipient)}</span>`;
+        ? `<span class="badge badge-info">${escapeHtml(t("badge_from", { user: msg.sender }))}</span>`
+        : `<span class="badge badge-warning">${escapeHtml(t("badge_to", { user: msg.recipient }))}</span>`;
 
     const sigBadge = res.sigValid
-      ? `<span class="badge badge-ok">✓ Chữ ký chính chủ</span>`
-      : `<span class="badge badge-err">❌ Chữ ký giả mạo</span>`;
+      ? `<span class="badge badge-ok">${escapeHtml(t("badge_sig_ok"))}</span>`
+      : `<span class="badge badge-err">${escapeHtml(t("badge_sig_err"))}</span>`;
 
     const aeadBadge = `<span class="badge badge-cyber">🔒 E2EE P-256</span>`;
 
@@ -597,12 +628,12 @@ async function refreshMessages() {
         bodyHtml = `
           <div class="msg-content-box">
             <div style="font-size:14px; font-weight:700; color:#86efac; margin-bottom:4px;">
-              📄 Tệp đã mở khóa: ${escapeHtml(msg.filename)} (${msg.file_size} bytes)
+              ${escapeHtml(t("unlocked_file", { name: msg.filename, size: msg.file_size }))}
             </div>
-            ${parsed.note ? `<div class="small muted">Ghi chú: "${escapeHtml(parsed.note)}"</div>` : ""}
+            ${parsed.note ? `<div class="small muted">${escapeHtml(t("file_note", { note: parsed.note }))}</div>` : ""}
             <div style="margin-top:8px;">
               <a class="btn btn-primary btn-sm" href="${blobUrl}" download="${escapeHtml(msg.filename)}">
-                ⬇ Tải tệp giải mã
+                ${escapeHtml(t("btn_download_file"))}
               </a>
             </div>
           </div>
@@ -617,17 +648,16 @@ async function refreshMessages() {
     } else if (res.senderCopy) {
       bodyHtml = `
         <div class="msg-content-box">
-          <div class="muted small">🔒 <em>Bản sao đã mã hóa bằng khóa riêng của người nhận.</em></div>
+          <div class="muted small"><em>${escapeHtml(t("sender_copy_note"))}</em></div>
         </div>
       `;
     } else {
-      // Tamper alert explanation
       bodyHtml = `
         <div class="tamper-warning-box">
-          <div class="tamper-warning-title">🚨 PHÁT HIỆN CAN THIỆP GIAN LẬN! (Gói #${msg.id})</div>
+          <div class="tamper-warning-title">${escapeHtml(t("tamper_alert_title", { id: msg.id }))}</div>
           <div class="tamper-warning-detail">❌ ${escapeHtml(res.error)}</div>
           <div class="small" style="color:#fecaca; margin-top:6px;">
-            🛡️ <strong>Nguyên lý Zero-Trust:</strong> Chữ ký số hoặc thẻ xác thực GCM bị sai lệch. Trình duyệt tự động chặn mở dữ liệu!
+            ${t("tamper_zero_trust_note")}
           </div>
         </div>
       `;
@@ -642,8 +672,8 @@ async function refreshMessages() {
           ${aeadBadge}
         </div>
         <div class="btn-row">
-          <button class="btn btn-danger btn-sm btn-tamper" data-id="${msg.id}" title="Đảo 1 byte trong CSDL để chứng minh khả năng phát hiện can thiệp">
-            ⚡ Hacker sửa 1 bit dữ liệu
+          <button type="button" class="btn btn-danger btn-sm btn-tamper" data-id="${msg.id}" title="${escapeHtml(t("btn_tamper_title"))}">
+            ${escapeHtml(t("btn_tamper"))}
           </button>
         </div>
       </div>
@@ -652,8 +682,8 @@ async function refreshMessages() {
 
       <div class="msg-inspect-toggle">
         <span class="mono small">
-          <strong>Khóa tạm:</strong> ${escapeHtml(msg.ephemeral_pubkey_hex.slice(0, 16))}... | 
-          <strong>Bản mã CSDL:</strong> ${escapeHtml(msg.ciphertext_hex.slice(0, 20))}...
+          <strong>${escapeHtml(t("lbl_eph_key"))}</strong> ${escapeHtml(msg.ephemeral_pubkey_hex.slice(0, 16))}... |
+          <strong>${escapeHtml(t("lbl_db_cipher"))}</strong> ${escapeHtml(msg.ciphertext_hex.slice(0, 20))}...
         </span>
       </div>
     `;
@@ -677,12 +707,12 @@ async function refreshInspector() {
 }
 
 // ----------------------------------------------------------------------
-// BỘ TRÌNH DIỄN MÔ PHỎNG TƯƠNG TÁC 5 GIÂY (INTERACTIVE SIMULATION)
+// 5-Second Interactive Simulation
 // ----------------------------------------------------------------------
 async function run5SecondInteractiveSimulation() {
   const btn = document.getElementById("btnRunAutoDemo");
   btn.disabled = true;
-  btn.innerHTML = `<span class="icon-pulse">⚙️</span> Đang chạy mô phỏng Alice ➔ Máy Chủ ➔ Bob...`;
+  btn.innerHTML = `<span class="icon-pulse" aria-hidden="true">⚙️</span> <span>${escapeHtml(t("btn_running_5s"))}</span>`;
 
   const s1 = document.getElementById("stageSender");
   const s2 = document.getElementById("stageServer");
@@ -693,7 +723,6 @@ async function run5SecondInteractiveSimulation() {
   const simServerView = document.getElementById("simServerView");
   const simBobView = document.getElementById("simBobView");
 
-  // Reset highlight states
   s1.classList.remove("highlight");
   s2.classList.remove("highlight");
   s3.classList.remove("highlight");
@@ -701,14 +730,12 @@ async function run5SecondInteractiveSimulation() {
   p2.classList.remove("active-travel");
 
   try {
-    // Stage 1: Alice's browser
     s1.classList.add("highlight");
     await ensureDemoPersona("alice", "Alice Tran");
 
-    const sampleText = "Mã Phê Duyệt Tuyệt Mật: X9A-772-ECC [Mô phỏng 5 giây]";
+    const sampleText = t("sim_sample_msg");
     const bobUser = STATE.users.find((u) => u.username === "bob");
     if (!bobUser) {
-      // Register bob first if needed
       await ensureDemoPersona("bob", "Bob Le");
       await ensureDemoPersona("alice", "Alice Tran");
     }
@@ -722,11 +749,9 @@ async function run5SecondInteractiveSimulation() {
       aadText
     );
 
-    // Animate Packet 1
     p1.classList.add("active-travel");
     await new Promise((r) => setTimeout(r, 800));
 
-    // Stage 2: Server saves ciphertext
     s1.classList.remove("highlight");
     s2.classList.add("highlight");
 
@@ -751,30 +776,28 @@ async function run5SecondInteractiveSimulation() {
         nonce_12_bytes: env.nonce_hex,
         ciphertext_hex: env.ciphertext_hex.slice(0, 36) + "...",
         signature_hex: env.signature_hex.slice(0, 36) + "...",
-        plaintext: "0 BYTES LƯU TRỮ (Máy Chủ Tri Thức Bằng Không / Zero-Knowledge)",
+        plaintext: t("sim_zero_bytes"),
       },
       null,
       2
     );
 
-    // Animate Packet 2
     p2.classList.add("active-travel");
     await new Promise((r) => setTimeout(r, 800));
 
-    // Stage 3: Bob's browser receives and decrypts
     s2.classList.remove("highlight");
     s3.classList.add("highlight");
 
     await ensureDemoPersona("bob", "Bob Le");
-    simBobView.textContent = `"${sampleText}"\n\nKiểm tra toàn vẹn:\n✓ Chữ ký số ECDSA của Alice: CHUẨN XÁC HỢP LỆ ✅\n✓ Thẻ xác thực AES-256-GCM Tag: TRÙNG KHỚP 100% ✅`;
+    simBobView.textContent = t("sim_bob_verified_lines", { text: sampleText });
 
     simProof.classList.remove("hidden");
     await refreshMessages();
   } catch (err) {
-    alert("Lỗi mô phỏng: " + err.message);
+    alert(err.message);
   } finally {
     btn.disabled = false;
-    btn.innerHTML = `<span class="icon-pulse">▶</span> Chạy Mô Phỏng Trực Quan Trong 5 Giây`;
+    btn.innerHTML = `<span class="icon-pulse" aria-hidden="true">▶</span> <span data-i18n="btn_run_5s">${escapeHtml(t("btn_run_5s"))}</span>`;
     setTimeout(() => {
       s1.classList.remove("highlight");
       s2.classList.remove("highlight");
@@ -798,10 +821,8 @@ async function loadToyCurve() {
   selQ.innerHTML = "";
   data.points.forEach(([x, y], idx) => {
     const label = `(${x}, ${y})${x === 2 && y === 4 ? " [G]" : ""}`;
-    const o1 = new Option(label, `${x},${y}`);
-    const o2 = new Option(label, `${x},${y}`);
-    selP.appendChild(o1);
-    selQ.appendChild(o2);
+    selP.appendChild(new Option(label, `${x},${y}`));
+    selQ.appendChild(new Option(label, `${x},${y}`));
     if (x === 2 && y === 4) selP.selectedIndex = idx;
     if (idx === 10) selQ.selectedIndex = idx;
   });
@@ -833,25 +854,21 @@ function drawToyCurveSvg(points, highlights = {}) {
   const Q = highlights.Q;
   const sum = highlights.sum;
 
-  // Điểm giao thứ ba trên đường thẳng: -R = (x, (p - y) % p)
   let negR = null;
   if (Array.isArray(sum)) {
     negR = [sum[0], (p - (sum[1] % p)) % p];
   }
 
-  // Vẽ đường thẳng hình học nối các điểm (Dây cung / Tiếp tuyến)
   if (Array.isArray(P) && Array.isArray(Q)) {
     const xP = mapX(P[0]), yP = mapY(P[1]);
     const xQ = mapX(Q[0]), yQ = mapY(Q[1]);
 
     if (P[0] === Q[0] && P[1] === Q[1]) {
-      // Phép nhân đôi (2P): Tiếp tuyến đi qua P và -R
       if (negR) {
         const xNeg = mapX(negR[0]), yNeg = mapY(negR[1]);
         html += `<line x1="${xP.toFixed(1)}" y1="${yP.toFixed(1)}" x2="${xNeg.toFixed(1)}" y2="${yNeg.toFixed(1)}" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" />`;
       }
     } else {
-      // Phép cộng hai điểm khác nhau (P != Q): Cát tuyến nối P, Q và -R
       html += `<line x1="${xP.toFixed(1)}" y1="${yP.toFixed(1)}" x2="${xQ.toFixed(1)}" y2="${yQ.toFixed(1)}" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" />`;
       if (negR) {
         const xNeg = mapX(negR[0]), yNeg = mapY(negR[1]);
@@ -859,7 +876,6 @@ function drawToyCurveSvg(points, highlights = {}) {
       }
     }
 
-    // Đường gióng nét đứt đối xứng dọc qua trục hoành từ -R tới R = P + Q
     if (negR && Array.isArray(sum)) {
       const xNeg = mapX(negR[0]), yNeg = mapY(negR[1]);
       const xSum = mapX(sum[0]), ySum = mapY(sum[1]);
@@ -877,13 +893,32 @@ function drawToyCurveSvg(points, highlights = {}) {
 
   drawHighlight(highlights.P, "#00f2fe", "P");
   drawHighlight(highlights.Q, "#10b981", "Q");
-  if (negR) {
-    drawHighlight(negR, "#a855f7", "-(P+Q)");
-  }
+  if (negR) drawHighlight(negR, "#a855f7", "-(P+Q)");
   drawHighlight(highlights.sum, "#f59e0b", "P+Q");
   drawHighlight(highlights.kP, "#ec4899", "kP");
 
   svg.innerHTML = html;
+}
+
+function renderPointOpsResult(res) {
+  if (!res) return;
+  const negRText = Array.isArray(res.P_plus_Q)
+    ? `(${res.P_plus_Q[0]}, ${(97 - res.P_plus_Q[1]) % 97})`
+    : t("infinity_pt");
+
+  document.getElementById("pointOpsSummary").innerHTML = `
+    <div><strong>${escapeHtml(t("ops_sum_1"))}</strong> P + Q = <span class="mono" style="color:#f59e0b;">(${res.P_plus_Q})</span>
+    (${escapeHtml(t("ops_sum_inter"))} <span class="mono" style="color:#a855f7;">${negRText}</span>, ${escapeHtml(t("ops_sum_refl"))}).</div>
+    <div style="margin-top:4px;"><strong>${escapeHtml(t("ops_sum_2"))}</strong> 2P = <span class="mono" style="color:#10b981;">(${res.two_P})</span> &nbsp;|&nbsp;
+    <strong>${escapeHtml(t("ops_sum_3"))}</strong> <strong>${res.k}·P</strong> (${escapeHtml(t("ops_bin"))} <code>${res.k_binary}</code>) = <span class="mono" style="color:#ec4899;">(${res.k_times_P})</span></div>
+  `;
+
+  let rows = `<table><thead><tr><th scope="col">${escapeHtml(t("th_step"))}</th><th scope="col">${escapeHtml(t("th_bit"))}</th><th scope="col">${escapeHtml(t("th_double"))}</th><th scope="col">${escapeHtml(t("th_add"))}</th><th scope="col">${escapeHtml(t("th_result"))}</th></tr></thead><tbody>`;
+  for (const s of res.trace) {
+    rows += `<tr><td>${s.step}</td><td class="mono">${s.bit}</td><td class="mono">${JSON.stringify(s.after_double)}</td><td>${escapeHtml(s.added_base ? t("val_yes") : t("val_no"))}</td><td class="mono">${JSON.stringify(s.result)}</td></tr>`;
+  }
+  rows += `</tbody></table>`;
+  document.getElementById("pointOpsTrace").innerHTML = rows;
 }
 
 async function runPointOps() {
@@ -895,6 +930,7 @@ async function runPointOps() {
     method: "POST",
     body: JSON.stringify({ px, py, qx, qy, k }),
   });
+  STATE.lastPointOpsRes = res;
 
   drawToyCurveSvg(STATE.toyCurveData.points, {
     P: res.P,
@@ -902,28 +938,11 @@ async function runPointOps() {
     sum: res.P_plus_Q,
     kP: res.k_times_P,
   });
-
-  const negRText = Array.isArray(res.P_plus_Q)
-    ? `(${res.P_plus_Q[0]}, ${(97 - res.P_plus_Q[1]) % 97})`
-    : "Vô cùng";
-
-  document.getElementById("pointOpsSummary").innerHTML = `
-    <div><strong>1. Phép Cộng Điểm:</strong> P + Q = <span class="mono" style="color:#f59e0b;">(${res.P_plus_Q})</span> 
-    (Điểm cắt thứ 3 là -(P+Q) = <span class="mono" style="color:#a855f7;">${negRText}</span>, sau đó lấy đối xứng trục).</div>
-    <div style="margin-top:4px;"><strong>2. Phép Nhân Đôi:</strong> 2P = <span class="mono" style="color:#10b981;">(${res.two_P})</span> &nbsp;|&nbsp;
-    <strong>3. Nhân Vô Hướng:</strong> <strong>${res.k}·P</strong> (dạng nhị phân <code>${res.k_binary}</code>) = <span class="mono" style="color:#ec4899;">(${res.k_times_P})</span></div>
-  `;
-
-  let rows = `<table><thead><tr><th>Bước</th><th>Bit</th><th>Nhân Đôi (2P)</th><th>Cộng P?</th><th>Kết Quả</th></tr></thead><tbody>`;
-  for (const s of res.trace) {
-    rows += `<tr><td>${s.step}</td><td class="mono">${s.bit}</td><td class="mono">${JSON.stringify(s.after_double)}</td><td>${s.added_base ? "Có" : "Không"}</td><td class="mono">${JSON.stringify(s.result)}</td></tr>`;
-  }
-  rows += `</tbody></table>`;
-  document.getElementById("pointOpsTrace").innerHTML = rows;
+  renderPointOpsResult(res);
 }
 
 // ----------------------------------------------------------------------
-// Tab 3: Benchmarks & Charts (Đo Kiểm Hiệu Năng & So Sánh)
+// Tab 3: Benchmarks & Charts
 // ----------------------------------------------------------------------
 function drawSizeChart(results) {
   const canvas = document.getElementById("sizeChartCanvas");
@@ -949,24 +968,21 @@ function drawSizeChart(results) {
   });
 }
 
-async function runBenchmark(mode) {
-  const wrap = document.getElementById("benchResultsTableWrap");
-  wrap.innerHTML = `<p class="muted">Đang chạy đo kiểm hiệu năng (${mode === "quick" ? "Nhanh" : "Toàn diện"}) bằng Python thuần...</p>`;
-  const data = await api(`/api/benchmarks/run?mode=${mode}`);
-
+function renderBenchmarkData(data) {
+  if (!data) return;
   const cc = data.coordinate_comparison;
   document.getElementById("coordBenchBox").innerHTML = `
-    <div><strong>Đường cong:</strong> ${cc.curve} (${cc.iterations} lần lặp)</div>
-    <div><strong>Nhân vô hướng Tọa độ Afin:</strong> ${cc.affine_ms} ms</div>
-    <div><strong>Nhân vô hướng Tọa độ Xạ ảnh Jacobian:</strong> ${cc.jacobian_ms} ms</div>
-    <div style="margin-top:6px;"><span class="badge badge-ok">Tốc độ Jacobian: Nhanh hơn ${cc.speedup} lần</span> (loại bỏ phép nghịch đảo modulo trong từng bit)</div>
+    <div><strong>${escapeHtml(t("coord_curve"))}</strong> ${cc.curve} (${cc.iterations} ${escapeHtml(t("coord_iters"))})</div>
+    <div><strong>${escapeHtml(t("coord_affine"))}</strong> ${cc.affine_ms} ms</div>
+    <div><strong>${escapeHtml(t("coord_jacobian"))}</strong> ${cc.jacobian_ms} ms</div>
+    <div style="margin-top:6px;"><span class="badge badge-ok">${escapeHtml(t("coord_badge", { x: cc.speedup }))}</span> ${escapeHtml(t("coord_note"))}</div>
   `;
 
   drawSizeChart(data.results);
 
   let html = `<table><thead><tr>
-    <th>Thuật Toán</th><th>Mức An Toàn</th><th>Khóa Công Khai (Nén / Gốc)</th><th>Kích Thước Chữ Ký</th>
-    <th>Tạo Khóa (ms)</th><th>Ký Số (ms)</th><th>Xác Minh (ms)</th><th>ECDH / Mã-Giải mã (ms)</th>
+    <th scope="col">${escapeHtml(t("th_algo"))}</th><th scope="col">${escapeHtml(t("th_sec_bits"))}</th><th scope="col">${escapeHtml(t("th_pubkey"))}</th><th scope="col">${escapeHtml(t("th_sig_size"))}</th>
+    <th scope="col">${escapeHtml(t("th_keygen"))}</th><th scope="col">${escapeHtml(t("th_sign"))}</th><th scope="col">${escapeHtml(t("th_verify"))}</th><th scope="col">${escapeHtml(t("th_ecdh_enc"))}</th>
   </tr></thead><tbody>`;
   for (const r of data.results) {
     html += `<tr>
@@ -981,11 +997,11 @@ async function runBenchmark(mode) {
     </tr>`;
   }
   html += `</tbody></table>`;
-  wrap.innerHTML = html;
+  document.getElementById("benchResultsTableWrap").innerHTML = html;
 
   let nistHtml = `<table><thead><tr>
-    <th>Cấp Độ Bảo Mật NIST</th><th>Khóa ECC (bit)</th><th>Khóa RSA (bit)</th>
-    <th>Khóa Công Khai ECC (byte)</th><th>Khóa Công Khai RSA (byte)</th><th>Tỉ Lệ Rút Gọn (RSA / ECC)</th>
+    <th scope="col">${escapeHtml(t("th_nist_lvl"))}</th><th scope="col">${escapeHtml(t("th_ecc_bits"))}</th><th scope="col">${escapeHtml(t("th_rsa_bits"))}</th>
+    <th scope="col">${escapeHtml(t("th_ecc_bytes"))}</th><th scope="col">${escapeHtml(t("th_rsa_bytes"))}</th><th scope="col">${escapeHtml(t("th_ratio"))}</th>
   </tr></thead><tbody>`;
   for (const row of data.security_equivalence) {
     nistHtml += `<tr>
@@ -994,20 +1010,29 @@ async function runBenchmark(mode) {
       <td class="mono">${row.rsa_bits}</td>
       <td class="mono">${row.ecc_pubkey_bytes} B</td>
       <td class="mono">${row.rsa_pubkey_bytes} B</td>
-      <td><span class="badge badge-ok">Nhỏ gọn hơn ${row.ratio_key} lần</span></td>
+      <td><span class="badge badge-ok">${escapeHtml(t("badge_smaller", { x: row.ratio_key }))}</span></td>
     </tr>`;
   }
   nistHtml += `</tbody></table>`;
   document.getElementById("nistTableWrap").innerHTML = nistHtml;
 }
 
+async function runBenchmark(mode) {
+  const wrap = document.getElementById("benchResultsTableWrap");
+  const modeLabel = mode === "quick" ? t("mode_quick") : t("mode_full");
+  wrap.innerHTML = `<p class="muted">${escapeHtml(t("bench_running", { mode: modeLabel }))}</p>`;
+  const data = await api(`/api/benchmarks/run?mode=${mode}`);
+  STATE.lastBenchData = data;
+  renderBenchmarkData(data);
+}
+
 // ----------------------------------------------------------------------
-// Tab 4: Audit Log (Sổ Nhật Ký Kiểm Toán Toàn Vẹn)
+// Tab 4: Audit Log
 // ----------------------------------------------------------------------
 async function refreshAuditLog() {
   const data = await api("/api/audit");
   let html = `<table><thead><tr>
-    <th>Mã ID</th><th>Thời Gian (UTC)</th><th>Tác Nhân</th><th>Hành Động</th><th>Chi Tiết Giao Dịch</th><th>Mã Băm Bản Ghi (Hash)</th>
+    <th scope="col">${escapeHtml(t("th_id"))}</th><th scope="col">${escapeHtml(t("th_time"))}</th><th scope="col">${escapeHtml(t("th_actor"))}</th><th scope="col">${escapeHtml(t("th_action"))}</th><th scope="col">${escapeHtml(t("th_details"))}</th><th scope="col">${escapeHtml(t("th_hash"))}</th>
   </tr></thead><tbody>`;
   for (const e of data.entries) {
     html += `<tr>
@@ -1024,21 +1049,65 @@ async function refreshAuditLog() {
 }
 
 // ----------------------------------------------------------------------
-// Wiring & Init
+// Wiring, View Transitions & Bilingual Live Re-render
 // ----------------------------------------------------------------------
-document.querySelectorAll(".nav-menu .nav-btn").forEach((btn) => {
-  btn.addEventListener("click", () => {
+function switchTab(tabName, routeFocus = false) {
+  const applyTab = () => {
     document.querySelectorAll(".nav-menu .nav-btn").forEach((b) => b.classList.remove("active"));
     document.querySelectorAll(".tab-panel").forEach((p) => p.classList.remove("active"));
-    btn.classList.add("active");
-    document.getElementById(`tab-${btn.dataset.tab}`).classList.add("active");
-  });
+    const btn = document.querySelector(`.nav-menu .nav-btn[data-tab="${tabName}"]`);
+    const panel = document.getElementById(`tab-${tabName}`);
+    if (btn) btn.classList.add("active");
+    if (panel) panel.classList.add("active");
+  };
+
+  const focusHeading = () => {
+    if (!routeFocus) return;
+    document.getElementById(`heading-${tabName}`)?.focus({ preventScroll: true });
+  };
+
+  if (!document.startViewTransition) {
+    applyTab();
+    focusHeading();
+    return;
+  }
+  const transition = document.startViewTransition(applyTab);
+  transition.finished.finally(focusHeading);
+}
+
+document.querySelectorAll(".nav-menu .nav-btn").forEach((btn) => {
+  btn.addEventListener("click", (e) => switchTab(btn.dataset.tab, e.detail === 0));
 });
+
+document.querySelectorAll(".lang-btn[data-lang]").forEach((btn) => {
+  btn.addEventListener("click", () => window.ECC_I18N?.setLang(btn.getAttribute("data-lang")));
+});
+
+if (window.ECC_I18N) {
+  window.ECC_I18N.onChange(async () => {
+    updateModeBadge();
+    if (STATE.lastPointOpsRes) renderPointOpsResult(STATE.lastPointOpsRes);
+    if (STATE.lastBenchData) renderBenchmarkData(STATE.lastBenchData);
+    if (STATE.lastAuditVerifyRes) {
+      const r = STATE.lastAuditVerifyRes;
+      showStatus(
+        "auditIntegrityBanner",
+        r.valid
+          ? t("audit_valid_msg", { n: r.total_entries, hash: r.head_hash })
+          : t("audit_broken_msg", { id: r.broken_at_id, reason: r.reason }),
+        r.valid
+      );
+    }
+    if (STATE.token) {
+      await refreshMessages().catch(() => {});
+      await refreshAuditLog().catch(() => {});
+    }
+  });
+}
 
 document.getElementById("btnRegisterLogin").addEventListener("click", handleRegisterAndLogin);
 document.getElementById("btnChallengeLogin").addEventListener("click", handleChallengeLogin);
 
-// Persona Buttons
 document.getElementById("btnDemoAlice").addEventListener("click", () =>
   ensureDemoPersona("alice", "Alice Tran").catch((e) => showStatus("authLog", e.message, false))
 );
@@ -1057,7 +1126,6 @@ document.getElementById("topBtnCustom").addEventListener("click", () => {
   document.getElementById("authUsername").focus();
 });
 
-// 5-Second Simulation Button
 document.getElementById("btnRunAutoDemo").addEventListener("click", run5SecondInteractiveSimulation);
 document.getElementById("btnCloseSimProof").addEventListener("click", () => {
   document.getElementById("simResultBox").classList.add("hidden");
@@ -1065,18 +1133,12 @@ document.getElementById("btnCloseSimProof").addEventListener("click", () => {
 
 document.getElementById("btnSendEncrypted").addEventListener("click", handleSendEncrypted);
 
-const p1Btn = document.getElementById("btnPreset1");
-if (p1Btn) {
-  p1Btn.addEventListener("click", () => {
-    document.getElementById("msgPlaintext").value = "Phê duyệt lệnh chuyển khoản 500,000,000 VNĐ cho đối tác #8821.";
-  });
-}
-const p2Btn = document.getElementById("btnPreset2");
-if (p2Btn) {
-  p2Btn.addEventListener("click", () => {
-    document.getElementById("msgPlaintext").value = "Hợp đồng dịch vụ bảo mật thông tin & bảo đảm toàn vẹn tài chính.";
-  });
-}
+document.getElementById("btnPreset1")?.addEventListener("click", () => {
+  document.getElementById("msgPlaintext").value = t("preset1_text");
+});
+document.getElementById("btnPreset2")?.addEventListener("click", () => {
+  document.getElementById("msgPlaintext").value = t("preset2_text");
+});
 
 document.getElementById("btnRefreshSis").addEventListener("click", () => {
   refreshUsers();
@@ -1120,22 +1182,25 @@ document.getElementById("btnRunQuickBench").addEventListener("click", () => runB
 document.getElementById("btnRunFullBench").addEventListener("click", () => runBenchmark("full"));
 document.getElementById("btnVerifyAudit").addEventListener("click", async () => {
   const res = await api("/api/audit/verify");
+  STATE.lastAuditVerifyRes = res;
   showStatus(
     "auditIntegrityBanner",
     res.valid
-      ? `Chuỗi băm toàn vẹn HỢP LỆ trên toàn bộ ${res.total_entries} bản ghi. Mã băm đỉnh (Head Hash): ${res.head_hash}`
-      : `Chuỗi băm BỊ ĐỨT GÃY tại ID ${res.broken_at_id}: ${res.reason}`,
+      ? t("audit_valid_msg", { n: res.total_entries, hash: res.head_hash })
+      : t("audit_broken_msg", { id: res.broken_at_id, reason: res.reason }),
     res.valid
   );
   await refreshAuditLog();
 });
 
 // ----------------------------------------------------------------------
-// Dynamic Animated Cyber Background (Elliptic Curve Nodes & Mesh)
+// Dynamic Animated Cyber Background
 // ----------------------------------------------------------------------
 function initCyberBackground() {
   const canvas = document.getElementById("cyberBackground");
   if (!canvas) return;
+  if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
   const ctx = canvas.getContext("2d");
   let width, height;
   const particles = [];
@@ -1166,7 +1231,6 @@ function initCyberBackground() {
 
   function render() {
     ctx.clearRect(0, 0, width, height);
-
     for (let i = 0; i < particles.length; i++) {
       const p1 = particles[i];
       for (let j = i + 1; j < particles.length; j++) {
@@ -1211,31 +1275,29 @@ function initCyberBackground() {
       ctx.fill();
       ctx.shadowBlur = 0;
     }
-
     requestAnimationFrame(render);
   }
-
   render();
 }
 
 window.addEventListener("DOMContentLoaded", async () => {
+  window.ECC_I18N?.applyStaticTranslations();
   initCyberBackground();
   if (!window.isSecureContext || !window.crypto || !window.crypto.subtle) {
     document.getElementById("secureContextBanner").classList.remove("hidden");
   }
-  // Initialize both demo accounts so Bob is always available for Alice to send to
   await ensureDemoPersona("bob", "Bob Le").catch(() => {});
   await ensureDemoPersona("alice", "Alice Tran").catch(() => {});
+  updateModeBadge();
   await refreshUsers().catch(() => {});
   await loadToyCurve().catch(() => {});
   await refreshAuditLog().catch(() => {});
 
-  // If there are no messages yet, Alice automatically sends Bob an initial demo greeting
   const msgs = await api("/api/messages").catch(() => ({ messages: [] }));
   if (msgs.messages && msgs.messages.length === 0) {
     const bobUser = STATE.users.find((u) => u.username === "bob");
     if (bobUser && STATE.jwk) {
-      const initialText = "Xin chào Bob! Kênh liên lạc E2EE bảo vệ bằng P-256 + AES-256-GCM đã kích hoạt thành công.";
+      const initialText = "Hello Bob! P-256 + AES-256-GCM End-to-End Encrypted channel is live.";
       const aadText = "alice|bob|text|initial";
       const env = await encryptAndSignEnvelope(STATE.jwk, bobUser.public_key_hex, textEnc.encode(initialText), aadText);
       await api("/api/messages", {
